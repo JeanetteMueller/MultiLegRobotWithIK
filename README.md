@@ -14,7 +14,9 @@ Inside of the STL Folder you find files for 3D printing.
 At the end of the filename you find a "x5" orsimilar. So you have to print this part 5 times.
 
 ### Prepare the Servos
-
+Use my programmer 
+https://github.com/JeanetteMueller/SerialServoIdProgrammer
+to set all the 1-n ids. 
 
 ### Install Libraries
 * https://github.com/derdoktor667/FlyskyIBUS
