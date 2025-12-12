@@ -5,88 +5,17 @@
 #include <array>
 #include <cmath>
 
-// 3D Vektor Struktur für Position und Richtung
-struct Vector3
-{
-    double x, y, z;
+#include "Vector3.h"
+#include "JointAngles.h"
 
-    Vector3(double x = 0, double y = 0, double z = 0) : x(x), y(y), z(z) {}
-
-    Vector3 operator+(const Vector3 &v) const
-    {
-        return Vector3(x + v.x, y + v.y, z + v.z);
-    }
-
-    Vector3 operator-(const Vector3 &v) const
-    {
-        return Vector3(x - v.x, y - v.y, z - v.z);
-    }
-
-    Vector3 operator*(double s) const
-    {
-        return Vector3(x * s, y * s, z * s);
-    }
-
-    double length() const
-    {
-        return std::sqrt(x * x + y * y + z * z);
-    }
-
-    Vector3 normalize() const
-    {
-        double len = length();
-        return (len > 0) ? Vector3(x / len, y / len, z / len) : Vector3();
-    }
-};
-
-// Rotation um X-Achse
-Vector3 rotateX(const Vector3 &v, double angle)
-{
-    double c = std::cos(angle);
-    double s = std::sin(angle);
-    return Vector3(
-        v.x,
-        v.y * c - v.z * s,
-        v.y * s + v.z * c);
-}
-
-// Rotation um Y-Achse
-Vector3 rotateY(const Vector3 &v, double angle)
-{
-    double c = std::cos(angle);
-    double s = std::sin(angle);
-    return Vector3(
-        v.x * c + v.z * s,
-        v.y,
-        -v.x * s + v.z * c);
-}
-
-// Rotation um Z-Achse
-Vector3 rotateZ(const Vector3 &v, double angle)
-{
-    double c = std::cos(angle);
-    double s = std::sin(angle);
-    return Vector3(
-        v.x * c - v.y * s,
-        v.x * s + v.y * c,
-        v.z);
-}
-
-// Gelenkwinkel für ein Bein
-struct JointAngles
-{
-    double theta0;  // Seitliche Rotation (horizontal)
-    double theta1;  // Erstes vertikales Gelenk
-    double theta2;  // Zweites vertikales Gelenk
-    bool reachable; // Ist das Ziel erreichbar?
-
-    JointAngles() : theta0(0), theta1(0), theta2(0), reachable(false) {}
-};
 
 // Roboter Klasse
 class CircularRobot
 {
 private:
+    unsigned long currentMillis = 0;
+    unsigned long previousStepMillis = 0;
+
     int NUM_LEGS = 1;
     double BODY_RADIUS;     // mm
     double SEGMENT2_LENGTH; // mm
@@ -97,7 +26,15 @@ private:
     double tiltY;         // Neigung um Y-Achse (Seitwärts) in Radiant
     double tiltZ;         // Rotation um Z-Achse in Radiant
 
-    std::vector<Vector3> footPositions; // Feste Fußpositionen auf dem Boden
+    std::vector<Vector3> baseFootPositions; // Feste Fußpositionen auf dem Boden
+    std::vector<Vector3> lastTargetPosition;
+    std::vector<Vector3> targetPosition;
+    int currentMovingLeg = 1;
+    int walkingStep = -1;
+    int walkingStepCount = 5;
+    double walk_x = 0;
+    double walk_y = 0;
+    double walkSpeed = 0;
 
 public:
     CircularRobot(int numberOfLegs, double bodyRadius, double thighLength, double shinLength, double bodyPositionOverZero = 200.0)
@@ -113,15 +50,30 @@ public:
         tiltY = 0;
         tiltZ = 0;
 
-        // Initialisiere Fußpositionen (gleichmäßig verteilt, 72° Abstand)
+        double spaceBetweenLegs = (360.0 / numberOfLegs);
+
+        // Initialisiere Fußpositionen (gleichmäßig verteilt, 72° Abstand bei 5 Beinen)
         for (int i = 0; i < NUM_LEGS; i++)
         {
-            double angle = i * 72.0 * M_PI / 180.0;
-            double footRadius = BODY_RADIUS - 10.0; // Abstand vom Zentrum
-            footPositions.push_back(Vector3(
+            double angle = i * spaceBetweenLegs * M_PI / 180.0;
+            double footRadius = BODY_RADIUS + 60.0; // Abstand vom Zentrum
+            baseFootPositions.push_back(Vector3(
                 std::cos(angle) * footRadius,
                 0.0, // Boden
                 std::sin(angle) * footRadius));
+        }
+        lastTargetPosition = baseFootPositions;
+        targetPosition = baseFootPositions;
+    }
+
+    void setWalkDirection(double x, double y, double speed)
+    {
+        if (walkingStep == 0)
+        {
+            // andere richtung und geschwindigkeit immer nur wenn alle Füße am Boden sind
+            walk_x = x;
+            walk_y = y;
+            walkSpeed = speed;
         }
     }
 
@@ -139,11 +91,49 @@ public:
         bodyPosition.y = height;
     }
 
+    void mainLoop()
+    {
+        currentMillis = millis();
+
+        // if (currentMillis - previousStepMillis > 500)
+        // {
+        //     previousStepMillis = currentMillis;
+
+        //     walkingStep++;
+
+        //     lastTargetPosition = targetPosition;
+
+        //     if (walkingStepCount == walkingStep)
+        //     {
+        //         walkingStep = 0;
+
+        //         currentMovingLeg++;
+
+        //         if (currentMovingLeg > NUM_LEGS)
+        //         {
+        //             currentMovingLeg = 1;
+        //         }
+        //     }
+
+        //     Serial.print("currentMovingLeg: ");
+        //     Serial.print(currentMovingLeg);
+        //     Serial.print(" step: ");
+        //     Serial.println(walkingStep);
+
+        //     // for (int i = 0; i < NUM_LEGS; i++)
+        //     // {
+        //     //     Vector3 newTarget = getStepTargetPosition(i);
+        //     //     targetPosition[i] = newTarget;
+        //     // }
+        // }
+    }
+
     // Berechne Beinbasis-Position im Weltkoordinatensystem
-    Vector3 getLegBasePosition(int legIndex) const
+    Vector3 getLegOriginPosition(int legIndex, int legCount) const
     {
         // Lokale Position am Körper (vor Rotation)
-        double legAngle = legIndex * 72.0 * M_PI / 180.0;
+        double spaceBetweenLegs = (360.0 / legCount);
+        double legAngle = legIndex * spaceBetweenLegs * M_PI / 180.0;
         Vector3 localPos(
             std::cos(legAngle) * BODY_RADIUS,
             0.0,
@@ -158,16 +148,40 @@ public:
         return rotated + bodyPosition;
     }
 
+    Vector3 getStepTargetPosition(int legIndex) const
+    {
+        if (currentMovingLeg == legIndex)
+        {
+            Vector3 newTarget = baseFootPositions[legIndex];
+            newTarget.x += walk_x / NUM_LEGS * (NUM_LEGS - legIndex);
+            newTarget.y += walk_y / NUM_LEGS * (NUM_LEGS - legIndex);
+
+            std::vector<Vector3> walkingWay = interpolateSinZ(lastTargetPosition[legIndex], newTarget, walkingStepCount);
+
+            return walkingWay[walkingStep];
+        }
+        else
+        {
+            Vector3 newTarget = baseFootPositions[legIndex];
+            newTarget.x -= walk_x / NUM_LEGS;
+            newTarget.y -= walk_y / NUM_LEGS;
+
+            std::vector<Vector3> walkingWay = interpolate(lastTargetPosition[legIndex], newTarget, walkingStepCount);
+
+            return walkingWay[walkingStep];
+        }
+    }
+
     // Inverse Kinematik für ein Bein
     JointAngles calculateLegIK(int legIndex) const
     {
         JointAngles angles;
 
         // Basis-Position des Beins
-        Vector3 basePos = getLegBasePosition(legIndex);
+        Vector3 basePos = getLegOriginPosition(legIndex, NUM_LEGS);
 
         // Ziel-Position (Fußpunkt)
-        Vector3 footPos = footPositions[legIndex];
+        Vector3 footPos = targetPosition[legIndex];
 
         // Vektor von Basis zum Fuß
         Vector3 toFoot = footPos - basePos;
@@ -242,6 +256,7 @@ public:
             Serial.println("NICHT ERREICHBAR!");
             return;
         }
+
         Serial.print(" 0: ");
         Serial.print(angles.theta0 * 180.0 / M_PI);
         Serial.print("° ");
@@ -255,16 +270,72 @@ public:
 
     bool allLegAnglesAreReachable(const std::vector<JointAngles> &angles) const
     {
-        uint8_t count = sizeof(angles) / sizeof(angles[0]);
-
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < NUM_LEGS; i++)
         {
-            if (!angles[i].reachable)
+            if (!angles[i].reachable || !angles[i].allAnglesInLimit(i, NUM_LEGS))
             {
                 return false;
             }
         }
         return true;
+    }
+
+    std::vector<Vector3> interpolate(Vector3 start, Vector3 end, int n) const
+    {
+        std::vector<Vector3> pts;
+        pts.reserve(n + 2);
+
+        // lineare Schritte für x und y
+        double dx = (end.x - start.x) / (n + 1);
+        double dy = (end.y - start.y) / (n + 1);
+
+        // Punkte erzeugen
+        for (int i = 0; i <= n + 1; ++i)
+        {
+            double t = double(i) / double(n + 1);
+
+            Vector3 p = Vector3(start.x + dx * i,
+                                start.y + dy * i,
+                                0);
+
+            pts.push_back(p);
+        }
+
+        return pts;
+    }
+
+    std::vector<Vector3> interpolateSinZ(Vector3 start, Vector3 end, int n) const
+    {
+        std::vector<Vector3> pts;
+        pts.reserve(n + 2);
+
+        // lineare Schritte für x und y
+        double dx = (end.x - start.x) / (n + 1);
+        double dy = (end.y - start.y) / (n + 1);
+
+        // z-Werte sollen sinusförmig von z1 nach z2 verlaufen
+        // t läuft von 0..1 — der Sinus moduliert den Verlauf
+        auto zCurve = [&](double t)
+        {
+            // Sinus-Verlauf: 0 -> π
+            // erzeugt "Beule" nach oben
+            double s = std::sin(t * M_PI);
+            return start.z + (end.z - start.z) * s;
+        };
+
+        // Punkte erzeugen
+        for (int i = 0; i <= n + 1; ++i)
+        {
+            double t = double(i) / double(n + 1);
+
+            Vector3 p = Vector3(start.x + dx * i,
+                                start.y + dy * i,
+                                zCurve(t));
+
+            pts.push_back(p);
+        }
+
+        return pts;
     }
 };
 

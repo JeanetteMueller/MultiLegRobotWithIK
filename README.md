@@ -1,5 +1,5 @@
 # Multi-leg Robot with invers kinematic
-Robot base to develop a multi legged Robot (3-n) with invers kinematic.
+Robot base to develop a multi legged Robot (4-8) with invers kinematic.
 Software is made for EPS32 Dev Boards and an iBus-RC-Reciever like FlySky.
 
 ## Build your own

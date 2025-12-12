@@ -13,3 +13,6 @@ u8 newAcc[SERVO_NUM];
 bool calibrated = false;
 
 CircularRobot *robot;
+
+std::vector<JointAngles> extraCalibrations;
+

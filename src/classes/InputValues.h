@@ -26,6 +26,8 @@ public:
     PositionSwitch switchRightOutside;
     PositionSwitch switchRightInside;
 
+    bool failsafe;
+
 private:
 };
 

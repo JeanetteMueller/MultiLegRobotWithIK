@@ -15,16 +15,16 @@ uint16_t ibusVar07 = 0;
 uint16_t ibusVar08 = 0;
 uint16_t ibusVar09 = 0;
 
-#define RC_STICK_RIGHT_H (byte)1
-#define RC_STICK_RIGHT_V (byte)2
-#define RC_STICK_LEFT_V (byte)3
-#define RC_STICK_LEFT_H (byte)4
-#define RC_TURN_LEFT (byte)5
-#define RC_TURN_RIGHT (byte)6
-#define RC_SWITCH_LEFT_OUT (byte)7
-#define RC_SWITCH_LEFT_IN (byte)8
-#define RC_SWITCH_RIGHT_IN (byte)9
-#define RC_SWITCH_RIGHT_OUT (byte)10
+#define RC_STICK_RIGHT_H (byte)0
+#define RC_STICK_RIGHT_V (byte)1
+#define RC_STICK_LEFT_V (byte)2
+#define RC_STICK_LEFT_H (byte)3
+#define RC_TURN_LEFT (byte)4
+#define RC_TURN_RIGHT (byte)5
+#define RC_SWITCH_LEFT_OUT (byte)6
+#define RC_SWITCH_LEFT_IN (byte)7
+#define RC_SWITCH_RIGHT_IN (byte)8
+#define RC_SWITCH_RIGHT_OUT (byte)9
 
 InputValues *input = new InputValues();
 
@@ -68,27 +68,25 @@ void setupInput()
 
 void loopInput()
 {
-    IBus->read();
+    ibusVar00 = IBus->getChannel(RC_STICK_RIGHT_H);    //
+    ibusVar01 = IBus->getChannel(RC_STICK_RIGHT_V);    //
+    ibusVar02 = IBus->getChannel(RC_STICK_LEFT_V);     //
+    ibusVar03 = IBus->getChannel(RC_STICK_LEFT_H);     //
+    ibusVar04 = IBus->getChannel(RC_TURN_LEFT);        // (drehregler links)
+    ibusVar05 = IBus->getChannel(RC_TURN_RIGHT);       // (drehregler rechts)
+    ibusVar06 = IBus->getChannel(RC_SWITCH_LEFT_OUT);  // (schalter links außen)
+    ibusVar07 = IBus->getChannel(RC_SWITCH_LEFT_IN);   // (schalter links innen)
+    ibusVar08 = IBus->getChannel(RC_SWITCH_RIGHT_IN);  // (schalter rechts innen)
+    ibusVar09 = IBus->getChannel(RC_SWITCH_RIGHT_OUT); // (schalter rechts außen)
 
-    if (IBus->hasFailsafe())
-    {
-        Serial.println("FAILSAFE!");
+    // if (IBus->isFailsafe())
+    // {
+    //     Serial.println("FAILSAFE!");
 
-        setDefaultValues();
-    }
-    else
-    {
-        ibusVar00 = IBus->getChannel(RC_STICK_RIGHT_H);    // 
-        ibusVar01 = IBus->getChannel(RC_STICK_RIGHT_V);    // 
-        ibusVar02 = IBus->getChannel(RC_STICK_LEFT_V);     // 
-        ibusVar03 = IBus->getChannel(RC_STICK_LEFT_H);     // 
-        ibusVar04 = IBus->getChannel(RC_TURN_LEFT);        // (drehregler links)
-        ibusVar05 = IBus->getChannel(RC_TURN_RIGHT);       // (drehregler rechts)
-        ibusVar06 = IBus->getChannel(RC_SWITCH_LEFT_OUT);  // (schalter links außen)
-        ibusVar07 = IBus->getChannel(RC_SWITCH_LEFT_IN);   // (schalter links innen)
-        ibusVar08 = IBus->getChannel(RC_SWITCH_RIGHT_IN);  // (schalter rechts innen)
-        ibusVar09 = IBus->getChannel(RC_SWITCH_RIGHT_OUT); // (schalter rechts außen)
-    }
+    //     // setDefaultValues();
+    // }
+
+    input->failsafe = IBus->isFailsafe();
 
     input->rightStickHorizontal = fmap(ibusVar00, 1000, 2000, -100.0, 100.0);
     input->rightStickVertical = fmap(ibusVar01, 1000, 2000, -100.0, 100.0);
@@ -103,18 +101,36 @@ void loopInput()
     input->switchRightInside = getSwitchValueFrom(ibusVar08);
     input->switchRightOutside = getSwitchValueFrom(ibusVar09);
 
-    if (debug)
+    if (debug || input->failsafe)
     {
         Serial.print("Input: ");
 
-        Serial.print(" rightStickVertical: ");
+        Serial.print(" rightStick y: ");
         Serial.print(input->rightStickVertical);
-        Serial.print(" rightStickHorizontal: ");
+        Serial.print(" x: ");
         Serial.print(input->rightStickHorizontal);
+
+        Serial.print(" leftStick y: ");
+        Serial.print(input->leftStickVertical);
+        Serial.print(" x: ");
+        Serial.print(input->leftStickHorizontal);
 
         Serial.print(" leftPoit: ");
         Serial.print(input->leftPoit);
         Serial.print(" rightPoti: ");
-        Serial.println(input->rightPoti);
+        Serial.print(input->rightPoti);
+
+        Serial.print(" switches: ");
+        Serial.print(" lo: ");
+        Serial.print(input->switchLeftOutside);
+        Serial.print(" li: ");
+        Serial.print(input->switchLeftInside);
+        Serial.print(" ri: ");
+        Serial.print(input->switchRightInside);
+        Serial.print(" lr: ");
+        Serial.print(input->switchRightOutside);
+
+        Serial.print(" -- is failsafe: ");
+        Serial.println(input->failsafe ? "true" : "false");
     }
 }

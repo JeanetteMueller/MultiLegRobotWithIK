@@ -12,7 +12,7 @@ s16 calcSerialServoDegree(double degree)
 
 void initServoPositions()
 {
-  u16 speed = 4000;
+  u16 speed = 2000;
   u8 acc = 0;
   s16 pos = calcSerialServoDegree(180);
 
@@ -53,23 +53,27 @@ void calibrate()
 {
   Serial.print("Calibrate Servos...");
 
-  delay(1000);
+  // delay(1000);
 
-  st.CalibrationOfs(1);
-  st.CalibrationOfs(2);
-  st.CalibrationOfs(3);
-  st.CalibrationOfs(4);
-  st.CalibrationOfs(5);
-  st.CalibrationOfs(6);
-  st.CalibrationOfs(7);
-  st.CalibrationOfs(8);
-  st.CalibrationOfs(9);
-  st.CalibrationOfs(10);
-  st.CalibrationOfs(11);
-  st.CalibrationOfs(12);
-  st.CalibrationOfs(13);
-  st.CalibrationOfs(14);
-  st.CalibrationOfs(15);
+  // st.CalibrationOfs(1);
+  // st.CalibrationOfs(2);
+  // st.CalibrationOfs(3);
+
+  // st.CalibrationOfs(4);
+  // st.CalibrationOfs(5);
+  // st.CalibrationOfs(6);
+
+  // st.CalibrationOfs(7);
+  // st.CalibrationOfs(8);
+  // st.CalibrationOfs(9);
+
+  // st.CalibrationOfs(10);
+  // st.CalibrationOfs(11);
+  // st.CalibrationOfs(12);
+
+  // st.CalibrationOfs(13);
+  // st.CalibrationOfs(14);
+  // st.CalibrationOfs(15);
 
   Serial.println(" done");
   delay(500);
