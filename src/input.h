@@ -51,8 +51,10 @@ void setDefaultValues()
     ibusVar01 = 1500;
     ibusVar02 = 1500;
     ibusVar03 = 1500;
+
     ibusVar04 = 1500;
     ibusVar05 = 1500;
+
     ibusVar06 = 1500;
     ibusVar07 = 1000;
     ibusVar08 = 1000;
@@ -88,12 +90,16 @@ void loopInput()
 
     input->failsafe = IBus->isFailsafe();
 
+    if (input->failsafe) {
+        setDefaultValues();
+    }
+
     input->rightStickHorizontal = fmap(ibusVar00, 1000, 2000, -100.0, 100.0);
     input->rightStickVertical = fmap(ibusVar01, 1000, 2000, -100.0, 100.0);
     input->leftStickHorizontal = fmap(ibusVar03, 1000, 2000, -100.0, 100.0);
     input->leftStickVertical = fmap(ibusVar02, 1000, 2000, -100.0, 100.0);
 
-    input->leftPoit = fmap(ibusVar04, 1000, 2000, 0.0, 100.0);
+    input->leftPoit = fmap(ibusVar04, 1000, 2000, 0.0, 1000.0);
     input->rightPoti = fmap(ibusVar05, 1000, 2000, 0.0, 1000.0);
 
     input->switchLeftOutside = getSwitchValueFrom(ibusVar06);
@@ -101,7 +107,7 @@ void loopInput()
     input->switchRightInside = getSwitchValueFrom(ibusVar08);
     input->switchRightOutside = getSwitchValueFrom(ibusVar09);
 
-    if (debug || input->failsafe)
+    if (debug)
     {
         Serial.print("Input: ");
 
@@ -128,9 +134,11 @@ void loopInput()
         Serial.print(" ri: ");
         Serial.print(input->switchRightInside);
         Serial.print(" lr: ");
-        Serial.print(input->switchRightOutside);
+        Serial.println(input->switchRightOutside);
+    }
 
-        Serial.print(" -- is failsafe: ");
-        Serial.println(input->failsafe ? "true" : "false");
+    if (input->failsafe) {
+        // Serial.print(" -- is failsafe: ");
+        // Serial.println(input->failsafe ? "true" : "false");
     }
 }

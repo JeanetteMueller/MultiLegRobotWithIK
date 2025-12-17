@@ -53,7 +53,7 @@ void calibrate()
 {
   Serial.print("Calibrate Servos...");
 
-  // delay(1000);
+  delay(1000);
 
   // st.CalibrationOfs(1);
   // st.CalibrationOfs(2);

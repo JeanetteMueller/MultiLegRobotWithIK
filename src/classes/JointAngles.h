@@ -9,41 +9,51 @@ struct JointAngles
     double theta2;  // Zweites vertikales Gelenk
     bool reachable; // Ist das Ziel erreichbar?
 
+    bool debug = false;
+
     JointAngles() : theta0(0), theta1(0), theta2(0), reachable(false) {}
 
     bool allAnglesInLimit(int legIndex, int legCount) const
     {
-        double degree0 = theta0 * 180.0 / M_PI;
-        if (degree0 < 0 && legIndex > 1)
-        {
-            degree0 = 360 + degree0;
-        }
-        degree0 = degree0 - (legIndex * (360.0 / legCount));
+        bool ok = true;
 
-        if (degree0 > 50 || degree0 < -50)
+        if (theta0 > 90 || theta0 < -90 || debug)
         {
-            Serial.print("degree0 not in limit: ");
-            Serial.println(degree0);
-            return false;
+            Serial.print(" theta0 not in limit: ");
+            Serial.print(theta0);
+            if (theta0 > 90 || theta0 < -90)
+            {
+                ok = false;
+            }
         }
 
-        double degree1 = theta1 * 180.0 / M_PI;
-        if (degree1 > 90 || degree1 < -90)
+        if (theta1 > 50 || theta1 < -50 || debug)
         {
-            Serial.print("degree1 not in limit: ");
-            Serial.println(degree1);
-            return false;
+            Serial.print(" theta1 not in limit: ");
+            Serial.print(theta1);
+            if (theta1 > 50 || theta1 < -50)
+            {
+                ok = false;
+            }
         }
 
-        double degree2 = theta2 * 180.0 / M_PI;
-        if (degree2 < 40)
+        if (theta2 < 40 || debug)
         {
-            Serial.print("degree2 not in limit: ");
-            Serial.println(degree2);
-            return false;
+            Serial.print(" theta2 not in limit: ");
+            Serial.print(theta2);
+            if (theta2 < 40)
+            {
+                ok = false;
+            }
         }
 
-        return true;
+        if (!ok || debug)
+        {
+            Serial.print(" -> leg: ");
+            Serial.println(legIndex);
+        }
+
+        return ok;
     }
 };
 #endif
