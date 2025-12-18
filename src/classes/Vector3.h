@@ -4,9 +4,9 @@
 // 3D Vektor Struktur für Position und Richtung
 struct Vector3
 {
-    double x, y, z;
+    float x, y, z;
 
-    Vector3(double x = 0, double y = 0, double z = 0) : x(x), y(y), z(z) {}
+    Vector3(float x = 0, float y = 0, float z = 0) : x(x), y(y), z(z) {}
 
     Vector3 operator+(const Vector3 &v) const
     {
@@ -18,28 +18,28 @@ struct Vector3
         return Vector3(x - v.x, y - v.y, z - v.z);
     }
 
-    Vector3 operator*(double s) const
+    Vector3 operator*(float s) const
     {
         return Vector3(x * s, y * s, z * s);
     }
 
-    double length() const
+    Vector3 rotate(float angleRad) const
     {
-        return std::sqrt(x * x + y * y + z * z);
-    }
+        float c = cosf(angleRad);
+        float s = sinf(angleRad);
 
-    Vector3 normalize() const
-    {
-        double len = length();
-        return (len > 0) ? Vector3(x / len, y / len, z / len) : Vector3();
+        return Vector3(
+            x * c - z * s,
+            0, 
+            x * s + z * c);
     }
 };
 
 // Rotation um X-Achse
-Vector3 rotateX(const Vector3 &v, double angle)
+Vector3 rotateX(const Vector3 &v, float angle)
 {
-    double c = std::cos(angle);
-    double s = std::sin(angle);
+    float c = cosf(angle);
+    float s = sinf(angle);
     return Vector3(
         v.x,
         v.y * c - v.z * s,
@@ -47,10 +47,10 @@ Vector3 rotateX(const Vector3 &v, double angle)
 }
 
 // Rotation um Y-Achse
-Vector3 rotateY(const Vector3 &v, double angle)
+Vector3 rotateY(const Vector3 &v, float angle)
 {
-    double c = std::cos(angle);
-    double s = std::sin(angle);
+    float c = cosf(angle);
+    float s = sinf(angle);
     return Vector3(
         v.x * c + v.z * s,
         v.y,
@@ -58,10 +58,10 @@ Vector3 rotateY(const Vector3 &v, double angle)
 }
 
 // Rotation um Z-Achse
-Vector3 rotateZ(const Vector3 &v, double angle)
+Vector3 rotateZ(const Vector3 &v, float angle)
 {
-    double c = std::cos(angle);
-    double s = std::sin(angle);
+    float c = cosf(angle);
+    float s = sinf(angle);
     return Vector3(
         v.x * c - v.y * s,
         v.x * s + v.y * c,

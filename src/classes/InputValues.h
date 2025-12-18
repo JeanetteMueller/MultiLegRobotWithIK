@@ -14,12 +14,12 @@ class InputValues
 {
 public:
     InputValues() {};
-    double rightStickHorizontal;
-    double rightStickVertical;
-    double leftStickHorizontal;
-    double leftStickVertical;
-    double leftPoit;
-    double rightPoti;
+    float rightStickHorizontal;
+    float rightStickVertical;
+    float leftStickHorizontal;
+    float leftStickVertical;
+    float leftPoit;
+    float rightPoti;
 
     PositionSwitch switchLeftOutside;
     PositionSwitch switchLeftInside;

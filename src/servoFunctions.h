@@ -1,11 +1,11 @@
 
-double ServoDigitalRange_ST = 4095.0;
-double ServoAngleRange_ST = 360.0;
-double ServoInitACC_ST = 2000;
-double ServoMaxSpeed_ST = 4000;
-double ServoMaxACC_ST = 100;
+float ServoDigitalRange_ST = 4095.0;
+float ServoAngleRange_ST = 360.0;
+float ServoInitACC_ST = 2000;
+float ServoMaxSpeed_ST = 4000;
+float ServoMaxACC_ST = 100;
 
-s16 calcSerialServoDegree(double degree)
+s16 calcSerialServoDegree(float degree)
 {
   return fmap(degree, 0.0, ServoAngleRange_ST, 0.0, ServoDigitalRange_ST);
 }
@@ -24,11 +24,11 @@ void initServoPositions()
   }
 }
 
-void setDegreeForLegAndServo(uint8_t leg, uint8_t servo, double degree, u16 speed, u8 acc)
+void setDegreeForLegAndServo(uint8_t leg, uint8_t servo, float degree, u16 speed, u8 acc)
 {
   uint8_t servoNumber = leg * 3 + servo;
 
-  double target = 180 + degree;
+  float target = 180 + degree;
 
   if (target >= 360)
   {

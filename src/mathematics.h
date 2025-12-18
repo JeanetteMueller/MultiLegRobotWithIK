@@ -1,11 +1,11 @@
 
-double getAngleFrom(double x, double y)
+float getAngleFrom(float x, float y)
 {
-  double a = abs(x);
-  double b = abs(y);
-  double c = sqrt(pow(abs(x), 2) + pow(abs(y), 2));
+  float a = abs(x);
+  float b = abs(y);
+  float c = sqrt(pow(abs(x), 2) + pow(abs(y), 2));
 
-  double directionAngle = 0;
+  float directionAngle = 0;
 
   if (x == 0 && y > 0)
   {
