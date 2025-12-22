@@ -2,33 +2,35 @@
  * webservice.h
  *
  * Minimal Webservice um eine Steuerung auf ein Smartphone zu bringen, mit der der Roboter gesteuert werden kann.
- * Signale werden dabei per Socket direkt übertragen, sobald sich eine Änderung ergibt. 
+ * Signale werden dabei per Socket direkt übertragen, sobald sich eine Änderung ergibt.
  *
  * Autor: Claude.ai & Jeanette Müller
  * Datum: 2025
  */
 
- #include <WiFi.h>
+#include <WiFi.h>
 #include <WebServer.h>
 #include <WebSocketsServer.h>
 #include <ArduinoJson.h>
 
 // Access Point Einstellungen
-const char* ssid = "RobotController";
-const char* password = "robot1234";  // Mindestens 8 Zeichen
+const char *ssid = "RobotController";
+const char *password = "robot1234"; // Mindestens 8 Zeichen
 
 // Server Instanzen
 WebServer server(80);
 WebSocketsServer webSocket(81);
 
 // Roboter Steuerungswerte
-struct RobotControl {
-  float joystickX = 0;      // -100 bis 100
-  float joystickY = 0;      // -100 bis 100
-  float roll = 0;           // -10 bis 10
-  float pitch = 0;          // -10 bis 10
-  float yaw = 0;            // -10 bis 10
-  float height = 1750;       // 30 bis 265
+struct RobotControl
+{
+    float joystickX = 0;    // -100 bis 100
+    float joystickY = 0;    // -100 bis 100
+    float roll = 0;         // -10 bis 10
+    float pitch = 0;        // -10 bis 10
+    float yaw = 0;          // -10 bis 10
+    float height = 1750;    // 30 bis 265
+    float legextend = 1200; // 60 bis 200
 } robotControl;
 
 // HTML Seite
@@ -195,6 +197,22 @@ const char index_html[] PROGMEM = R"rawliteral(
     </div>
     
     <div class="controls">
+    <div class="slider-group">
+            <div class="slider-header">
+                <span class="slider-label">HÖHE</span>
+                <span class="slider-value" id="heightValue">1750</span>
+            </div>
+            <input type="range" class="height-slider" id="height" min="0" max="2650" value="1750">
+        </div>
+
+        <div class="slider-group">
+            <div class="slider-header">
+                <span class="slider-label">BEIN ÜBERHANG</span>
+                <span class="slider-value" id="legextendValue">1200</span>
+            </div>
+            <input type="range" class="height-slider" id="legextend" min="600" max="2000" value="1200">
+        </div>
+
         <div class="slider-group">
             <div class="slider-header">
                 <span class="slider-label">ROLL</span>
@@ -219,13 +237,7 @@ const char index_html[] PROGMEM = R"rawliteral(
             <input type="range" id="yaw" min="-100" max="100" value="0">
         </div>
         
-        <div class="slider-group">
-            <div class="slider-header">
-                <span class="slider-label">HÖHE</span>
-                <span class="slider-value" id="heightValue">1750</span>
-            </div>
-            <input type="range" class="height-slider" id="height" min="0" max="2650" value="1750">
-        </div>
+        
     </div>
 
     <script>
@@ -267,7 +279,8 @@ const char index_html[] PROGMEM = R"rawliteral(
                     roll: parseInt(document.getElementById('roll').value),
                     pitch: parseInt(document.getElementById('pitch').value),
                     yaw: parseInt(document.getElementById('yaw').value),
-                    height: parseInt(document.getElementById('height').value)
+                    height: parseInt(document.getElementById('height').value),
+                    legextend: parseInt(document.getElementById('legextend').value)
                 };
                 ws.send(JSON.stringify(data));
             }
@@ -343,7 +356,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         document.addEventListener('touchend', resetJoystick);
         
         // Slider Event Listener
-        ['roll', 'pitch', 'yaw', 'height'].forEach(id => {
+        ['roll', 'pitch', 'yaw', 'height', 'legextend'].forEach(id => {
             const slider = document.getElementById(id);
             const valueEl = document.getElementById(id + 'Value');
             
@@ -361,63 +374,69 @@ const char index_html[] PROGMEM = R"rawliteral(
 )rawliteral";
 
 // WebSocket Event Handler
-void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
-    switch(type) {
-        case WStype_DISCONNECTED:
-            Serial.printf("[%u] Disconnected!\n", num);
-            break;
-            
-        case WStype_CONNECTED:
-            {
-                IPAddress ip = webSocket.remoteIP(num);
-                Serial.printf("[%u] Connected from %d.%d.%d.%d\n", num, ip[0], ip[1], ip[2], ip[3]);
-            }
-            break;
-            
-        case WStype_TEXT:
-            {
-                // JSON parsen
-                StaticJsonDocument<256> doc;
-                DeserializationError error = deserializeJson(doc, payload);
-                
-                if (!error) {
-                    // Werte in Struktur übernehmen
-                    robotControl.joystickX = doc["jx"] | 0;
-                    robotControl.joystickY = doc["jy"] | 0;
-                    robotControl.roll = doc["roll"] | 0;
-                    robotControl.pitch = doc["pitch"] | 0;
-                    robotControl.yaw = doc["yaw"] | 0;
-                    robotControl.height = doc["height"] | 175;
-                    
-                    // Debug Ausgabe
-                    Serial.printf("JoyX:%4d JoyY:%4d Roll:%3d Pitch:%3d Yaw:%3d Height:%3d\n",
-                        robotControl.joystickX,
-                        robotControl.joystickY,
-                        robotControl.roll,
-                        robotControl.pitch,
-                        robotControl.yaw,
-                        robotControl.height
-                    );
-                }
-            }
-            break;
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
+{
+    switch (type)
+    {
+    case WStype_DISCONNECTED:
+        Serial.printf("[%u] Disconnected!\n", num);
+        break;
+
+    case WStype_CONNECTED:
+    {
+        IPAddress ip = webSocket.remoteIP(num);
+        Serial.printf("[%u] Connected from %d.%d.%d.%d\n", num, ip[0], ip[1], ip[2], ip[3]);
+    }
+    break;
+
+    case WStype_TEXT:
+    {
+        // JSON parsen
+        StaticJsonDocument<256> doc;
+        DeserializationError error = deserializeJson(doc, payload);
+
+        if (!error)
+        {
+            // Werte in Struktur übernehmen
+            robotControl.joystickX = doc["jx"] | 0;
+            robotControl.joystickY = doc["jy"] | 0;
+            robotControl.roll = doc["roll"] | 0;
+            robotControl.pitch = doc["pitch"] | 0;
+            robotControl.yaw = doc["yaw"] | 0;
+            robotControl.height = doc["height"] | 175;
+            robotControl.legextend = doc["legextend"] | 1200;
+
+            // Debug Ausgabe
+            Serial.printf("JoyX:%4d JoyY:%4d Roll:%3d Pitch:%3d Yaw:%3d Height:%3d Extend:%3d\n",
+                          robotControl.joystickX,
+                          robotControl.joystickY,
+                          robotControl.roll,
+                          robotControl.pitch,
+                          robotControl.yaw,
+                          robotControl.height,
+                          robotControl.legextend);
+        }
+    }
+    break;
     }
 }
 
 // Webseite ausliefern
-void handleRoot() {
+void handleRoot()
+{
     server.send(200, "text/html", index_html);
 }
 
-void setupWebServer() {
+void setupWebServer()
+{
     Serial.begin(115200);
     Serial.println("\n\nESP32 Robot Controller");
     Serial.println("======================");
-    
+
     // Access Point starten (SSID sichtbar, max 4 Verbindungen)
     WiFi.softAP(ssid, password, 1, false, 4);
     IPAddress IP = WiFi.softAPIP();
-    
+
     Serial.println("\nWiFi Access Point gestartet");
     Serial.print("SSID: ");
     Serial.println(ssid);
@@ -425,16 +444,16 @@ void setupWebServer() {
     Serial.println(password);
     Serial.print("IP Adresse: ");
     Serial.println(IP);
-    
+
     // WebServer Routes
     server.on("/", handleRoot);
     server.begin();
     Serial.println("WebServer gestartet auf Port 80");
-    
+
     // WebSocket starten
     webSocket.begin();
     webSocket.onEvent(webSocketEvent);
     Serial.println("WebSocket Server gestartet auf Port 81");
-    
+
     Serial.println("\n>> Verbinde dich mit dem WLAN und öffne http://192.168.4.1");
 }

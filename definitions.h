@@ -30,11 +30,10 @@ u8 acc = 0;
 
 bool calibrated = false;
 
-// CircularRobot *robot;
 PentapodKinematics *robot;
 
 std::array<LegAngles, NUMBER_OF_LEGS> extraCalibrations;
 
 float maxTilt = 35.0;
 float maxRotation = 25.0;
-float maxStepWidth = 60.0;
+float maxStepWidth = 80.0;

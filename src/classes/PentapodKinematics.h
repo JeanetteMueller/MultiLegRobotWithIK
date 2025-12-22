@@ -26,7 +26,7 @@
 class PentapodKinematics
 {
 public:
-    static constexpr uint8_t NUM_LEGS = 5;           // Anzahl der Beine
+    static constexpr uint8_t NUM_LEGS = 5;            // Anzahl der Beine
     static constexpr uint8_t WALKING_STEP_COUNT = 28; // Anzahl der interpolierten Schritte für Bewegungsabläufe
 
     std::array<Vector3, NUM_LEGS> baseFootPositions; // Feste Fußpositionen auf dem Boden
@@ -42,13 +42,16 @@ private:
     const float BODY_RADIUS;  // Radius des zylindrischen Körpers
     const float THIGH_LENGTH; // Länge des Oberschenkels (L1)
     const float SHIN_LENGTH;  // Länge des Unterschenkels (L2)
+    float baseFootExtend = 120.0;
+
+    bool allMovesDone = true;
 
     float walk_x = 0;
     float walk_y = 0;
 
     BodyPose m_pose;
 
-    static constexpr float rotateCoordinatesByLeg[NUM_LEGS] = {0, 144, -72, 72, -144};
+    static constexpr float rotateCoordinatesByLeg[NUM_LEGS] = {0, -144, 72, -72, 144};
 
 public:
     /**
@@ -61,7 +64,7 @@ public:
                             THIGH_LENGTH(thighLength),
                             SHIN_LENGTH(shinLength)
     {
-        float footRadius = BODY_RADIUS + 120.0; // Abstand vom Zentrum
+        float footRadius = BODY_RADIUS + baseFootExtend; // Abstand vom Zentrum
 
         // Initialisiere Fußpositionen (gleichmäßig verteilt, 72° = 2π/5 versetzt)
         for (uint8_t i = 0; i < NUM_LEGS; i++)
@@ -84,13 +87,17 @@ public:
     {
         if (millis() - previousStepMillis >= 5)
         {
-            if (currentMovingLeg == 0 && walkingStep == 0 && (walk_x < 5 && walk_x > -5) && (walk_y < 5 && walk_y > -5)) {
-                // Serial.println("NO MOVEMENT AT ALL");
+            if (currentMovingLeg == 0 &&
+                walkingStep == 0 &&
+                (walk_x < 5 && walk_x > -5) &&
+                (walk_y < 5 && walk_y > -5) &&
+                allMovesDone == true)
+            {
+                Serial.println("NO MOVEMENT AT ALL");
                 return;
             }
 
             previousStepMillis = millis();
-            
 
             walkingStep++;
 
@@ -106,12 +113,20 @@ public:
                 {
                     currentMovingLeg = currentMovingLeg - NUM_LEGS;
                 }
+
+                // if (currentMovingLeg == 0)
+                // {
+                //     allMovesDone = true;
+                // }
             }
 
-            // Serial.print("currentMovingLeg: ");
-            // Serial.print(currentMovingLeg);
-            // Serial.print(" step: ");
-            // Serial.println(walkingStep);
+            Serial.print("currentMovingLeg: ");
+            Serial.print(currentMovingLeg);
+            Serial.print("  step: ");
+            Serial.print(walkingStep);
+
+            Serial.print("  allMovesDone: ");
+            Serial.println(allMovesDone);
         }
     }
 
@@ -121,20 +136,52 @@ public:
         {
             Vector3 newTarget;
 
-            if (walk_x == 0 && walk_y == 0)
+            if ((walk_x < 5 && walk_x > -5) &&
+                (walk_y < 5 && walk_y > -5))
             {
                 newTarget = baseFootPositions[legIndex];
+
+                if (legIndex == currentMovingLeg)
+                {
+                    targetPosition[legIndex] = getStepTargetPosition(legIndex, newTarget);
+                }
+
+                if (currentMovingLeg == 0 && walkingStep == 0)
+                {
+                    allMovesDone = true;
+                }
             }
             else
             {
                 newTarget = newTargetPosition(legIndex);
-            }
-            targetPosition[legIndex] = getStepTargetPosition(legIndex, newTarget);
 
-            // Serial.print("Vector3 newTarget ");
-            // Serial.print(newTarget.x);
-            // Serial.print(" ");
-            // Serial.println(newTarget.z);
+                targetPosition[legIndex] = getStepTargetPosition(legIndex, newTarget);
+            }
+        }
+    }
+
+    void setBaseFootExtend(float newValue)
+    {
+        if (currentMovingLeg == 0 && walkingStep == 0)
+        {
+            if (baseFootExtend != newValue)
+            {
+                Serial.println("setBaseFootExtend");
+                float footRadius = BODY_RADIUS + newValue; // Abstand vom Zentrum
+
+                for (uint8_t i = 0; i < NUM_LEGS; i++)
+                {
+                    float angle = i * (2.0 * M_PI / NUM_LEGS);
+
+                    baseFootPositions[i] = Vector3(
+                        cosf(angle) * footRadius,
+                        0.0, // Boden
+                        sinf(angle) * footRadius);
+                }
+
+                baseFootExtend = newValue;
+                allMovesDone = false;
+            }
         }
     }
 
@@ -149,10 +196,10 @@ public:
     /**
      * Setzt die Körper-Pose mit einzelnen Parametern (Winkel in Grad)
      */
-    void setPose(float height, float footOffset,
+    void setPose(float height,
                  float tiltXDeg, float tiltZDeg, float rotYDeg)
     {
-        m_pose = BodyPose::fromDegrees(height, footOffset, tiltXDeg, tiltZDeg, rotYDeg);
+        m_pose = BodyPose::fromDegrees(height, tiltXDeg, tiltZDeg, rotYDeg);
     }
 
     /**
@@ -163,8 +210,13 @@ public:
         if (currentMovingLeg == 0 && walkingStep == 0)
         {
             // andere richtung und geschwindigkeit immer nur wenn alle Füße am Boden sind
-            walk_x = x;
-            walk_y = y;
+            if (walk_x != x || walk_y != y)
+            {
+                walk_x = x;
+                walk_y = y;
+
+                allMovesDone = false;
+            }
         }
     }
 
@@ -354,15 +406,24 @@ private:
         float rotation = rotateCoordinatesByLeg[legIndex];
         Vector3 rotated = walkVector.rotate(degToRad(rotation));
 
+        // zur hälfte im negativen, zur hälfte im positiven um die vole brandbreite der Beine in der Bewegung zu nutzen
+        // rotated.x = rotated.x / 2 - rotated.x;
+        // rotated.y = rotated.y / 2 - rotated.y;
+
+        rotated.x = -rotated.x;
+        rotated.y = -rotated.y;
+
         if (currentMovingLeg == legIndex)
         {
-            newTarget.x += rotated.x / NUM_LEGS * (NUM_LEGS - 1);
-            newTarget.z += rotated.z / NUM_LEGS * (NUM_LEGS - 1);
+            // Gesamtbewegung durch 5 mal 4 da ein Bein Schreitet während andere nur schieben
+            newTarget.x -= rotated.x / NUM_LEGS * (NUM_LEGS - 1);
+            newTarget.z -= rotated.z / NUM_LEGS * (NUM_LEGS - 1);
         }
         else
         {
-            newTarget.x -= rotated.x / (NUM_LEGS );
-            newTarget.z -= rotated.z / (NUM_LEGS );
+            // Gesamtbewegung durch die Anzahl der Beine
+            newTarget.x += rotated.x / NUM_LEGS;
+            newTarget.z += rotated.z / NUM_LEGS;
         }
         return newTarget;
     }
@@ -417,7 +478,8 @@ private:
                 liftLeg = sinCurve(d, walkingStep);
                 yAddition = (liftLeg * d * curveMultiplier);
 
-                if (yAddition < 10) {
+                if (yAddition < 10)
+                {
                     yAddition = 10.0;
                 }
             }

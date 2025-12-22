@@ -13,7 +13,6 @@
 #include <SCServo.h>
 #include "classes/Vector3.h"
 
-// #include "classes/CircularRobot.h"
 #include "classes/PentapodKinematics.h"
 #include <FastLED.h>
 
@@ -47,13 +46,16 @@ void setup()
     }
 
     extraCalibrations[2].lift = -3 * M_PI / 180.0;
+    extraCalibrations[2].swing = 2 * M_PI / 180.0;
+
     extraCalibrations[4].lift = -2 * M_PI / 180.0;
+    extraCalibrations[4].swing = -1 * M_PI / 180.0;
 
     robot = new PentapodKinematics(157.982, // body radius in mm
                                    120.0,   // thigh length in mm
                                    175.0);  // shin length in mm
 
-    robot->setPose(175.0 - 75.0, 120.0, 0.0, 0.0, 0.0);
+    robot->setPose(175.0 - 75.0, 0.0, 0.0, 0.0);
 
     setupInput();
 
@@ -85,30 +87,33 @@ void loop()
     // float tiltY = fmap(input->leftStickHorizontal, -100.0, 100.0, -28.0, 28.0);
     // float rotate = fmap(input->rightPoti, 0.0, 1000.0, -20.0, 20.0);
 
+    robot->setBaseFootExtend(robotControl.legextend / 10);
+
     robot->mainLoop();
 
-
-
     float height = robotControl.height / 10;
-    
+
     float tiltX = fmap(robotControl.roll, -100.0, 100.0, -maxTilt, maxTilt);
     float tiltY = fmap(robotControl.pitch, -100.0, 100.0, -maxTilt, maxTilt);
     float rotate = fmap(robotControl.yaw, -100.0, 100.0, -maxRotation, maxRotation);
 
-    robot->setPose(height, 120.0, tiltX, tiltY, rotate);
+    robot->setPose(height, tiltX, tiltY, rotate);
 
-    
     double walkX = fmap(robotControl.joystickY, -100, 100, -maxStepWidth, maxStepWidth);
-    double walkY = fmap(robotControl.joystickX, -100, 100, maxStepWidth, -maxStepWidth);
+    double walkY = fmap(robotControl.joystickX, -100, 100, -maxStepWidth, maxStepWidth);
     robot->setWalkDirection(walkX, walkY);
-    // robot->setWalkDirection(60, 0);
+
     robot->prepareTargetPositions();
 
     std::array<LegAngles, PentapodKinematics::NUM_LEGS> allAngles = robot->calculateAllLegAngles();
 
-    for (uint8_t legIndex = 0; legIndex < PentapodKinematics::NUM_LEGS; legIndex++)
+    if (robot->isValidPose() == false)
     {
-        // printLegAngles(allAngles[legIndex], legIndex);
+        robot->setWalkDirection(walkX * 0.6, walkY * 0.6);
+
+        robot->prepareTargetPositions();
+
+        allAngles = robot->calculateAllLegAngles();
     }
 
     if (robot->isValidPose())
