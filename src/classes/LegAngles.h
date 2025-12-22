@@ -1,3 +1,12 @@
+/**
+ * LegAngles.h
+ *
+ * C++ Struct zur Rückgabe der errechneten Winkel je Bein.
+ *
+ * Autor: Claude.ai & Jeanette Müller
+ * Datum: 2025
+ */
+
 #ifndef LegAngles_H
 #define LegAngles_H
 

@@ -1,3 +1,11 @@
+/**
+ * input.h
+ *
+ * Funktionen um Daten aus dem FlySky RC-Reciever auszulesen.
+ *
+ * Autor: Jeanette Müller
+ * Datum: 2025
+ */
 
 #include "classes/InputValues.h"
 

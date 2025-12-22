@@ -1,4 +1,13 @@
-#ifndef Vector3_h
+/**
+ * Vector3.h
+ *
+ * C++ Struct Als Helfer-Objekt um mit Koordinaten zu rechnen.
+ *
+ * Autor: Jeanette Müller
+ * Datum: 2025
+ */
+
+ #ifndef Vector3_h
 #define Vector3_h
 
 // 3D Vektor Struktur für Position und Richtung

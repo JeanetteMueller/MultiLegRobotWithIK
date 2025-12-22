@@ -1,4 +1,14 @@
-#include <WiFi.h>
+/**
+ * webservice.h
+ *
+ * Minimal Webservice um eine Steuerung auf ein Smartphone zu bringen, mit der der Roboter gesteuert werden kann.
+ * Signale werden dabei per Socket direkt übertragen, sobald sich eine Änderung ergibt. 
+ *
+ * Autor: Claude.ai & Jeanette Müller
+ * Datum: 2025
+ */
+
+ #include <WiFi.h>
 #include <WebServer.h>
 #include <WebSocketsServer.h>
 #include <ArduinoJson.h>
@@ -13,12 +23,12 @@ WebSocketsServer webSocket(81);
 
 // Roboter Steuerungswerte
 struct RobotControl {
-  int joystickX = 0;      // -100 bis 100
-  int joystickY = 0;      // -100 bis 100
-  int roll = 0;           // -10 bis 10
-  int pitch = 0;          // -10 bis 10
-  int yaw = 0;            // -10 bis 10
-  int height = 155;       // 30 bis 280
+  float joystickX = 0;      // -100 bis 100
+  float joystickY = 0;      // -100 bis 100
+  float roll = 0;           // -10 bis 10
+  float pitch = 0;          // -10 bis 10
+  float yaw = 0;            // -10 bis 10
+  float height = 1750;       // 30 bis 265
 } robotControl;
 
 // HTML Seite
@@ -73,8 +83,8 @@ const char index_html[] PROGMEM = R"rawliteral(
         .status.disconnected { background: rgba(255, 68, 68, 0.2); color: #ff4444; }
         
         .joystick-container {
-            width: 220px;
-            height: 220px;
+            width: 300px;
+            height: 300px;
             background: radial-gradient(circle, #2a2a4a 0%, #1a1a2e 100%);
             border-radius: 50%;
             position: relative;
@@ -190,7 +200,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                 <span class="slider-label">ROLL</span>
                 <span class="slider-value" id="rollValue">0</span>
             </div>
-            <input type="range" id="roll" min="-10" max="10" value="0">
+            <input type="range" id="roll" min="-100" max="100" value="0">
         </div>
         
         <div class="slider-group">
@@ -198,7 +208,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                 <span class="slider-label">PITCH</span>
                 <span class="slider-value" id="pitchValue">0</span>
             </div>
-            <input type="range" id="pitch" min="-10" max="10" value="0">
+            <input type="range" id="pitch" min="-100" max="100" value="0">
         </div>
         
         <div class="slider-group">
@@ -206,15 +216,15 @@ const char index_html[] PROGMEM = R"rawliteral(
                 <span class="slider-label">YAW</span>
                 <span class="slider-value" id="yawValue">0</span>
             </div>
-            <input type="range" id="yaw" min="-10" max="10" value="0">
+            <input type="range" id="yaw" min="-100" max="100" value="0">
         </div>
         
         <div class="slider-group">
             <div class="slider-header">
                 <span class="slider-label">HÖHE</span>
-                <span class="slider-value" id="heightValue">155</span>
+                <span class="slider-value" id="heightValue">1750</span>
             </div>
-            <input type="range" class="height-slider" id="height" min="30" max="280" value="155">
+            <input type="range" class="height-slider" id="height" min="0" max="2650" value="1750">
         </div>
     </div>
 
@@ -377,7 +387,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
                     robotControl.roll = doc["roll"] | 0;
                     robotControl.pitch = doc["pitch"] | 0;
                     robotControl.yaw = doc["yaw"] | 0;
-                    robotControl.height = doc["height"] | 155;
+                    robotControl.height = doc["height"] | 175;
                     
                     // Debug Ausgabe
                     Serial.printf("JoyX:%4d JoyY:%4d Roll:%3d Pitch:%3d Yaw:%3d Height:%3d\n",
@@ -388,9 +398,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
                         robotControl.yaw,
                         robotControl.height
                     );
-                    
-                    // Hier kannst du deine Roboter-Steuerungslogik einbauen
-                    // processRobotControl();
                 }
             }
             break;

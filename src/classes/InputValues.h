@@ -1,3 +1,11 @@
+/**
+ * InputValues.h
+ *
+ * C++ Klasse um eingaben von der FlySky RC-Remote anzunehmen.
+ *
+ * Autor: Jeanette Müller
+ * Datum: 2025
+ */
 
 #ifndef InputValues_h
 #define InputValues_h

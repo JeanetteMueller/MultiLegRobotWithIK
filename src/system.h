@@ -1,3 +1,12 @@
+/**
+ * system.h
+ *
+ * Zentrale Logic für Setup und Mainloop des ESP32.
+ *
+ * Autor: Jeanette Müller
+ * Datum: 2025
+ */
+
 #include <Arduino.h>
 #include <random>
 
@@ -78,15 +87,19 @@ void loop()
 
     robot->mainLoop();
 
-    float height = robotControl.height;
-    float tiltX = fmap(robotControl.roll, -10.0, 10.0, -28.0, 28.0);
-    float tiltY = fmap(robotControl.pitch, -10.0, 10.0, -28.0, 28.0);
-    float rotate = fmap(robotControl.yaw, -10.0, 10.0, -20.0, 20.0);
+
+
+    float height = robotControl.height / 10;
+    
+    float tiltX = fmap(robotControl.roll, -100.0, 100.0, -maxTilt, maxTilt);
+    float tiltY = fmap(robotControl.pitch, -100.0, 100.0, -maxTilt, maxTilt);
+    float rotate = fmap(robotControl.yaw, -100.0, 100.0, -maxRotation, maxRotation);
 
     robot->setPose(height, 120.0, tiltX, tiltY, rotate);
 
-    double walkX = fmap(robotControl.joystickY, -100, 100, -50, 50);
-    double walkY = fmap(robotControl.joystickX, -100, 100, 50, -50);
+    
+    double walkX = fmap(robotControl.joystickY, -100, 100, -maxStepWidth, maxStepWidth);
+    double walkY = fmap(robotControl.joystickX, -100, 100, maxStepWidth, -maxStepWidth);
     robot->setWalkDirection(walkX, walkY);
     // robot->setWalkDirection(60, 0);
     robot->prepareTargetPositions();
@@ -121,59 +134,7 @@ void loop()
         leds[1] = CRGB::Red;
     }
 
-    // int allInReach = robot->allLegAnglesAreReachable(allAngles);
-
-    // if (allInReach == -1)
-    // {
-
-    //     leds[1] = CRGB::Blue;
-
-    //     Serial.println("leg angles good");
-
-    //     for (uint8_t legIndex = 0; legIndex < NUMBER_OF_LEGS; legIndex++)
-    //     {
-    //         // if (legIndex == 1)
-    //         // {
-    //             // robot->printLegAngles(legIndex, angles[legIndex]);
-    //         // }
-
-    //         JointAngles calibration = extraCalibrations[legIndex];
-
-    //         // lift
-    //         float degree0 = angles[legIndex].theta0;
-    //         setDegreeForLegAndServo(legIndex, 0, calibration.theta0 + degree0, speed, acc);
-
-    //         // rotate
-    //         float degree1 = angles[legIndex].theta1;
-    //         setDegreeForLegAndServo(legIndex, 1, calibration.theta1 + degree1, speed, acc);
-
-    //         // knie
-    //         float degree2 = angles[legIndex].theta2;
-    //         setDegreeForLegAndServo(legIndex, 2, calibration.theta2 - degree2, speed, acc);
-    //     }
-
-    //     finalizeServoPositions();
-    // }
-    // else
-    // {
-    //     leds[1] = CRGB::Red;
-
-    //     JointAngles notInReach = angles[allInReach];
-    //     Vector3 target = robot->targetPosition[allInReach];
-
-    //     Serial.print("    Leg target ");
-    //     Serial.print(allInReach);
-    //     Serial.print(":  ");
-    //     Serial.print(target.x);
-    //     Serial.print(" ");
-    //     Serial.print(target.y);
-    //     Serial.print(" ");
-    //     Serial.print(target.z);
-
-    //     Serial.println(" -> leg angles not reachable!!! ");
-    // }
-
     FastLED.show();
 
-    delay(10);
+    delay(1);
 }

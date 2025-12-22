@@ -1,3 +1,12 @@
+/**
+ * BodyPose.h
+ *
+ * C++ Struct um die zielwerte des Roboters zu definieren.
+ *
+ * Autor: Jeanette Müller
+ * Datum: 2025
+ */
+
 #ifndef BodyPose_H
 #define BodyPose_H
 

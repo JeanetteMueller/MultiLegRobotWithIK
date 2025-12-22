@@ -9,7 +9,7 @@
  *   - θ1 (Hüft-Heben): Hebt/senkt den Oberschenkel
  *   - θ2 (Knie): Beugt/streckt das Knie
  *
- * Autor: Claude
+ * Autor: Claude.ai & Jeanette Müller
  * Datum: 2025
  */
 
@@ -27,7 +27,7 @@ class PentapodKinematics
 {
 public:
     static constexpr uint8_t NUM_LEGS = 5;           // Anzahl der Beine
-    static constexpr uint8_t WALKING_STEP_COUNT = 6; // Anzahl der interpolierten Schritte für Bewegungsabläufe
+    static constexpr uint8_t WALKING_STEP_COUNT = 28; // Anzahl der interpolierten Schritte für Bewegungsabläufe
 
     std::array<Vector3, NUM_LEGS> baseFootPositions; // Feste Fußpositionen auf dem Boden
     std::array<Vector3, NUM_LEGS> lastTargetPosition;
@@ -61,7 +61,6 @@ public:
                             THIGH_LENGTH(thighLength),
                             SHIN_LENGTH(shinLength)
     {
-
         float footRadius = BODY_RADIUS + 120.0; // Abstand vom Zentrum
 
         // Initialisiere Fußpositionen (gleichmäßig verteilt, 72° = 2π/5 versetzt)
@@ -83,9 +82,15 @@ public:
      */
     void mainLoop()
     {
-        if (millis() - previousStepMillis >= 50)
+        if (millis() - previousStepMillis >= 5)
         {
+            if (currentMovingLeg == 0 && walkingStep == 0 && (walk_x < 5 && walk_x > -5) && (walk_y < 5 && walk_y > -5)) {
+                // Serial.println("NO MOVEMENT AT ALL");
+                return;
+            }
+
             previousStepMillis = millis();
+            
 
             walkingStep++;
 
@@ -95,18 +100,18 @@ public:
 
                 lastTargetPosition = targetPosition;
 
-                currentMovingLeg++;
+                currentMovingLeg = currentMovingLeg + 2;
 
                 if (currentMovingLeg >= NUM_LEGS)
                 {
-                    currentMovingLeg = 0;
+                    currentMovingLeg = currentMovingLeg - NUM_LEGS;
                 }
             }
 
-            Serial.print("currentMovingLeg: ");
-            Serial.print(currentMovingLeg);
-            Serial.print(" step: ");
-            Serial.println(walkingStep);
+            // Serial.print("currentMovingLeg: ");
+            // Serial.print(currentMovingLeg);
+            // Serial.print(" step: ");
+            // Serial.println(walkingStep);
         }
     }
 
@@ -351,13 +356,13 @@ private:
 
         if (currentMovingLeg == legIndex)
         {
-            newTarget.x += rotated.x;
-            newTarget.z += rotated.z;
+            newTarget.x += rotated.x / NUM_LEGS * (NUM_LEGS - 1);
+            newTarget.z += rotated.z / NUM_LEGS * (NUM_LEGS - 1);
         }
         else
         {
-            newTarget.x -= rotated.x / (NUM_LEGS - 1);
-            newTarget.z -= rotated.z / (NUM_LEGS - 1);
+            newTarget.x -= rotated.x / (NUM_LEGS );
+            newTarget.z -= rotated.z / (NUM_LEGS );
         }
         return newTarget;
     }
@@ -370,27 +375,11 @@ private:
         {
             if (origin.x != newTarget.x || origin.y != newTarget.y || origin.z != newTarget.z)
             {
-
-                // Serial.print("active leg points: ");
-                // Vector3 p0 = interpolateSin(origin, newTarget, 0, 1.5);
-                // Serial.print(p0.x); Serial.print(" ");
-                // Vector3 p1 = interpolateSin(origin, newTarget, 1, 1.5);
-                // Serial.print(p1.x); Serial.print(" ");
-                // Vector3 p2 = interpolateSin(origin, newTarget, 2, 1.5);
-                // Serial.print(p2.x); Serial.print(" ");
-                // Vector3 p3 = interpolateSin(origin, newTarget, 3, 1.5);
-                // Serial.print(p3.x); Serial.print(" ");
-                // Vector3 p4 = interpolateSin(origin, newTarget, 4, 1.5);
-                // Serial.print(p4.x); Serial.print(" ");
-                // Vector3 p5 = interpolateSin(origin, newTarget, 5, 1.5);
-                // Serial.println(p5.x);
-
-                return interpolateSin(origin, newTarget, walkingStep, 1.5);
+                return interpolateSin(origin, newTarget, walkingStep, 1.0);
             }
         }
         else
         {
-
             if (origin.x != newTarget.x || origin.y != newTarget.y || origin.z != newTarget.z)
             {
                 return interpolateSin(origin, newTarget, walkingStep, 0);
@@ -427,6 +416,10 @@ private:
             {
                 liftLeg = sinCurve(d, walkingStep);
                 yAddition = (liftLeg * d * curveMultiplier);
+
+                if (yAddition < 10) {
+                    yAddition = 10.0;
+                }
             }
         }
 

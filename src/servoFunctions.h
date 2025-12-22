@@ -1,3 +1,11 @@
+/**
+ * servoFunctions.h
+ *
+ * Basis funktionen um mit den ST3020 Servos zu arbeiten.
+ *
+ * Autor: Jeanette Müller
+ * Datum: 2025
+ */
 
 float ServoDigitalRange_ST = 4095.0;
 float ServoAngleRange_ST = 360.0;
