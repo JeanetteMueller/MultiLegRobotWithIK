@@ -13,41 +13,41 @@
 // Struktur für die 3 Gelenkwinkel eines Beins (in Radiant)
 struct LegAngles
 {
-    float swing; // θ0: Hüft-Schwenk (um Achse senkrecht zum Oberschenkel)
-    float lift;  // θ1: Hüft-Heben
-    float knee;  // θ2: Kniewinkel
-    bool valid;   // true wenn Position erreichbar
+    float coxa;  // θ0: Coxa-Winkel (um vertikale Y-Achse)
+    float femur; // θ1: Femur-Winkel (um horizontale Achse)
+    float tibia; // θ2: Tibia/Knie-Winkel (um horizontale Achse)
+    bool valid;  // true wenn Position erreichbar
 
     bool debug = false;
 
     // Winkel in Grad zurückgeben
-    float swingDeg() const { return swing * 180.0 / M_PI; }
-    float liftDeg() const { return lift * 180.0 / M_PI; }
-    float kneeDeg() const { return knee * 180.0 / M_PI; }
+    double coxaDeg() const { return coxa * 180.0 / M_PI; }
+    double femurDeg() const { return femur * 180.0 / M_PI; }
+    double tibiaDeg() const { return tibia * 180.0 / M_PI; }
 
     bool allAnglesInLimit(uint8_t legIndex, int legCount) const
     {
         bool ok = true;
 
-        float lift = liftDeg();
-        float swing = swingDeg();
-        float knee = kneeDeg();
+        float swing = coxaDeg();
+        float lift = femurDeg();
+        float knee = tibiaDeg();
+
+        if (swing > 60 || swing < -60 || debug)
+        {
+            Serial.print(" swing not in limit: ");
+            Serial.print(swing);
+            if (swing > 60 || swing < -60)
+            {
+                ok = false;
+            }
+        }
 
         if (lift > 90 || lift < -90 || debug)
         {
             Serial.print(" lift not in limit: ");
             Serial.print(lift);
             if (lift > 90 || lift < -90)
-            {
-                ok = false;
-            }
-        }
-
-        if (swing > 50 || swing < -50 || debug)
-        {
-            Serial.print(" swing not in limit: ");
-            Serial.print(swing);
-            if (swing > 50 || swing < -50)
             {
                 ok = false;
             }

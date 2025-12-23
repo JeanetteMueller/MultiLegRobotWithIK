@@ -63,26 +63,31 @@ void calibrate()
 
   delay(1000);
 
-  // st.CalibrationOfs(1);
-  // st.CalibrationOfs(2);
-  // st.CalibrationOfs(3);
-
-  // st.CalibrationOfs(4);
+  //// Bein 0 (front)
   // st.CalibrationOfs(5);
-  // st.CalibrationOfs(6);
+  // st.CalibrationOfs(14);
+  // st.CalibrationOfs(15);
 
+  // //// Bein 1
   // st.CalibrationOfs(7);
   // st.CalibrationOfs(8);
   // st.CalibrationOfs(9);
 
+  // //// Bein 2
+  // st.CalibrationOfs(4);
+  // st.CalibrationOfs(2);
+  // st.CalibrationOfs(3);
+
+  // //// Bein 3
   // st.CalibrationOfs(10);
   // st.CalibrationOfs(11);
+  // st.CalibrationOfs(6);
+
+  // //// Bein 4
+  // st.CalibrationOfs(13);
+  // st.CalibrationOfs(1);
   // st.CalibrationOfs(12);
 
-  // st.CalibrationOfs(13);
-  // st.CalibrationOfs(14);
-  // st.CalibrationOfs(15);
-
-  Serial.println(" done");
+    Serial.println(" done");
   delay(500);
 }

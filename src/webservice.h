@@ -30,7 +30,7 @@ struct RobotControl
     float pitch = 0;        // -10 bis 10
     float yaw = 0;          // -10 bis 10
     float height = 1750;    // 30 bis 265
-    float legextend = 1200; // 60 bis 200
+    float legextend = 1200; // 0 bis 200
 } robotControl;
 
 // HTML Seite
@@ -123,14 +123,14 @@ const char index_html[] PROGMEM = R"rawliteral(
             max-width: 350px;
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 10px;
             background: #000;
         }
         
         .slider-group {
             background: rgba(255,255,255,0.05);
             border-radius: 12px;
-            padding: 12px 16px;
+            padding: 10px 16px;
         }
         
         .slider-header {
@@ -189,7 +189,6 @@ const char index_html[] PROGMEM = R"rawliteral(
     </style>
 </head>
 <body>
-    <h1>🤖 Robot Controller</h1>
     <div class="status disconnected" id="status">Verbinde...</div>
     
     <div class="joystick-container" id="joystickArea">
@@ -210,7 +209,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                 <span class="slider-label">BEIN ÜBERHANG</span>
                 <span class="slider-value" id="legextendValue">1200</span>
             </div>
-            <input type="range" class="height-slider" id="legextend" min="600" max="2000" value="1200">
+            <input type="range" class="height-slider" id="legextend" min="0" max="2000" value="1200">
         </div>
 
         <div class="slider-group">

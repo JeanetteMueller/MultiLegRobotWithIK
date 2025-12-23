@@ -39,10 +39,12 @@ private:
     uint32_t previousStepMillis = 0;
 
     // Roboter-Geometrie (in mm)
-    const float BODY_RADIUS;  // Radius des zylindrischen Körpers
-    const float THIGH_LENGTH; // Länge des Oberschenkels (L1)
-    const float SHIN_LENGTH;  // Länge des Unterschenkels (L2)
-    float baseFootExtend = 120.0;
+    const float BODY_RADIUS; // Radius des zylindrischen Körpers
+
+    const float COXA_LENGTH;  // Länge der Coxa (L0)
+    const float FEMUR_LENGTH; // Länge des Oberschenkels (L1)
+    const float TIBIA_LENGTH; // Länge des Unterschenkels (L2)
+    float baseFootExtend;
 
     bool allMovesDone = true;
 
@@ -53,28 +55,33 @@ private:
 
     static constexpr float rotateCoordinatesByLeg[NUM_LEGS] = {0, -144, 72, -72, 144};
 
+    std::array<float, NUM_LEGS> m_legBaseAngles; // Basis-Winkel der Beine (72° versetzt)
 public:
     /**
      * Konstruktor
      */
     PentapodKinematics(
         float bodyRadius,
+        float coxaLength,
         float thighLength,
-        float shinLength) : BODY_RADIUS(bodyRadius),
-                            THIGH_LENGTH(thighLength),
-                            SHIN_LENGTH(shinLength)
+        float shinLength,
+        float baseFootExtend) : BODY_RADIUS(bodyRadius),
+                                COXA_LENGTH(coxaLength),
+                                FEMUR_LENGTH(thighLength),
+                                TIBIA_LENGTH(shinLength),
+                                baseFootExtend(baseFootExtend)
     {
         float footRadius = BODY_RADIUS + baseFootExtend; // Abstand vom Zentrum
 
         // Initialisiere Fußpositionen (gleichmäßig verteilt, 72° = 2π/5 versetzt)
         for (uint8_t i = 0; i < NUM_LEGS; i++)
         {
-            float angle = i * (2.0 * M_PI / NUM_LEGS);
+            m_legBaseAngles[i] = i * (2.0 * M_PI / NUM_LEGS);
 
             baseFootPositions[i] = Vector3(
-                cosf(angle) * footRadius,
+                cosf(m_legBaseAngles[i]) * footRadius,
                 0.0, // Boden
-                sinf(angle) * footRadius);
+                sinf(m_legBaseAngles[i]) * footRadius);
         }
         lastTargetPosition = baseFootPositions;
         targetPosition = baseFootPositions;
@@ -238,26 +245,35 @@ public:
     {
         if (legIndex < 0 || legIndex >= NUM_LEGS)
         {
-            Serial.println("Leg index must be 0-4");
+            Serial.println(" ->      Leg index must be 0-4");
         }
 
         LegAngles result;
         result.valid = false;
+        result.coxa = 0.0;
+        result.femur = 0.0;
+        result.tibia = 0.0;
 
-        const float baseLegAngle = legIndex * (2.0 * M_PI / NUM_LEGS);
+        const float baseLegAngle = m_legBaseAngles[legIndex];
         const float legAngleWithRot = baseLegAngle + m_pose.rotY;
 
-        // Berechne Hüft-Position nach Körper-Rotation
-        float hipX, hipY, hipZ;
-        calculateHipPosition(legAngleWithRot, hipX, hipY, hipZ);
+        // Berechne Coxa-Basis Position nach Körper-Rotation
+        float coxaBaseX, coxaBaseY, coxaBaseZ;
+        calculateCoxaBasePosition(legAngleWithRot, coxaBaseX, coxaBaseY, coxaBaseZ);
 
         // Fuß-Position (bleibt auf dem Boden, basiert auf Basis-Winkel ohne Körperdrehung)
+        // // Der Fuß ist radial vom Körper: BODY_RADIUS + COXA_LENGTH + footOffset
+        // const float footRadialDist = BODY_RADIUS + COXA_LENGTH + baseFootExtend;
+        // const float footX = footRadialDist * cosf(baseLegAngle);
+        // const float footY = 0.0;
+        // const float footZ = footRadialDist * sinf(baseLegAngle);
         const float footX = targetPosition[legIndex].x;
         const float footY = targetPosition[legIndex].y;
         const float footZ = targetPosition[legIndex].z;
 
         // 3-DOF Inverse Kinematik berechnen
-        result = solveIK3DOF(legIndex, hipX, hipY, hipZ, footX, footY, footZ, baseLegAngle);
+        result = solveIK3DOF(legIndex, coxaBaseX, coxaBaseY, coxaBaseZ,
+                             footX, footY, footZ, legAngleWithRot);
 
         return result;
     }
@@ -293,107 +309,158 @@ public:
         }
         return true;
     }
-
-private:
     /**
-     * Berechnet die Hüft-Position nach Körper-Rotation
+     * Gibt den Basis-Winkel eines Beins zurück (in Radiant)
      */
-    void calculateHipPosition(float legAngleWithRot,
-                              float &hipX, float &hipY, float &hipZ) const
+    float getLegBaseAngle(int legIndex) const
     {
-        // Basis-Position am Körperrand
-        const float baseHipX = BODY_RADIUS * cosf(legAngleWithRot);
-        const float baseHipY = 0.0;
-        const float baseHipZ = BODY_RADIUS * sinf(legAngleWithRot);
-
-        // Rotation um X-Achse (Pitch)
-        hipX = baseHipX;
-        hipY = baseHipY * cosf(m_pose.tiltX) - baseHipZ * sinf(m_pose.tiltX);
-        hipZ = baseHipY * sinf(m_pose.tiltX) + baseHipZ * cosf(m_pose.tiltX);
-
-        // Rotation um Z-Achse (Roll)
-        const float tempX = hipX * cosf(m_pose.tiltZ) - hipY * sinf(m_pose.tiltZ);
-        const float tempY = hipX * sinf(m_pose.tiltZ) + hipY * cosf(m_pose.tiltZ);
-        hipX = tempX;
-        hipY = tempY;
-
-        // Verschiebung zur Körperhöhe
-        hipY += m_pose.height;
+        if (legIndex < 0 || legIndex >= NUM_LEGS)
+        {
+            Serial.println(" ->       Leg index must be 0-4");
+        }
+        return m_legBaseAngles[legIndex];
     }
 
     /**
-     * 3-DOF Inverse Kinematik
-     * Das Knie zeigt IMMER nach außen (positive radiale Richtung)
+     * Gibt die maximale Reichweite eines Beins zurück (Coxa + Femur + Tibia)
      */
-    LegAngles solveIK3DOF(uint8_t legIndex, float hipX, float hipY, float hipZ,
+    float getMaxReach() const
+    {
+        return COXA_LENGTH + FEMUR_LENGTH + TIBIA_LENGTH;
+    }
+
+    /**
+     * Gibt die minimale Reichweite eines Beins zurück
+     */
+    float getMinReach() const
+    {
+        return COXA_LENGTH + fabsf(FEMUR_LENGTH - TIBIA_LENGTH);
+    }
+
+private:
+    /**
+     * Berechnet die Coxa-Basis Position nach Körper-Rotation
+     */
+    void calculateCoxaBasePosition(float legAngleWithRot,
+                                   float &coxaBaseX, float &coxaBaseY, float &coxaBaseZ) const
+    {
+        // Basis-Position am Körperrand
+        coxaBaseX = BODY_RADIUS * cosf(legAngleWithRot);
+        coxaBaseY = 0.0;
+        coxaBaseZ = BODY_RADIUS * sinf(legAngleWithRot);
+
+        // Rotation um X-Achse (Pitch)
+        float tempY = coxaBaseY * cosf(m_pose.tiltX) - coxaBaseZ * sinf(m_pose.tiltX);
+        float tempZ = coxaBaseY * sinf(m_pose.tiltX) + coxaBaseZ * cosf(m_pose.tiltX);
+        coxaBaseY = tempY;
+        coxaBaseZ = tempZ;
+
+        // Rotation um Z-Achse (Roll)
+        float tempX = coxaBaseX * cosf(m_pose.tiltZ) - coxaBaseY * sinf(m_pose.tiltZ);
+        tempY = coxaBaseX * sinf(m_pose.tiltZ) + coxaBaseY * cosf(m_pose.tiltZ);
+        coxaBaseX = tempX;
+        coxaBaseY = tempY;
+
+        // Verschiebung zur Körperhöhe
+        coxaBaseY += m_pose.height;
+    }
+
+    /**
+     * 3-DOF Inverse Kinematik für Coxa-Femur-Tibia Konfiguration
+     *
+     * Die Coxa zeigt IMMER nach außen (in baseLegAngle Richtung)
+     * Nur bei seitlicher Verschiebung (durch Körperdrehung) dreht sie sich
+     */
+    LegAngles solveIK3DOF(uint8_t legIndex, float coxaBaseX, float coxaBaseY, float coxaBaseZ,
                           float footX, float footY, float footZ,
                           float baseLegAngle) const
     {
         LegAngles result;
         result.valid = false;
-        result.swing = 0.0;
-        result.lift = 0.0;
-        result.knee = 0.0;
+        result.coxa = 0.0;
+        result.femur = 0.0;
+        result.tibia = 0.0;
 
-        // Vektor von Hüfte zu Fuß
-        const float deltaX = footX - hipX;
-        const float deltaY = footY - hipY;
-        const float deltaZ = footZ - hipZ;
+        // Vektor von Coxa-Basis zu Fuß
+        const float deltaX = footX - coxaBaseX;
+        const float deltaY = footY - coxaBaseY;
+        const float deltaZ = footZ - coxaBaseZ;
 
-        // Basis-Richtungen
+        // Basis-Richtung (radial nach außen)
         const float baseRadialX = cosf(baseLegAngle);
         const float baseRadialZ = sinf(baseLegAngle);
+
+        // Tangentiale Richtung
         const float tangentX = -sinf(baseLegAngle);
         const float tangentZ = cosf(baseLegAngle);
 
-        // Projiziere auf lokales Koordinatensystem
+        // Projiziere Fuß-Position auf lokales Koordinatensystem
         const float footRadial = deltaX * baseRadialX + deltaZ * baseRadialZ;
         const float footTangent = deltaX * tangentX + deltaZ * tangentZ;
-        const float footVertical = deltaY;
 
-        // Gesamte 3D-Distanz
-        const float totalDist = sqrtf(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
+        // Coxa-Winkel: nur für seitliche Abweichung (tangential)
+        // Die Coxa zeigt primär nach außen, dreht sich aber für seitliche Korrektur
+        float coxaAngle = atan2f(footTangent, fmaxf(footRadial, 0.001));
+
+        // Normalisiere auf -π bis +π
+        while (coxaAngle > M_PI)
+            coxaAngle -= 2.0 * M_PI;
+        while (coxaAngle < -M_PI)
+            coxaAngle += 2.0 * M_PI;
+
+        // Effektive Coxa-Richtung nach Drehung
+        const float effCoxaAngle = baseLegAngle + coxaAngle;
+
+        // Richtung der Coxa (nach außen)
+        const float coxaDirX = cosf(effCoxaAngle);
+        const float coxaDirZ = sinf(effCoxaAngle);
+
+        // Position am Ende der Coxa
+        const float coxaEndX = coxaBaseX + COXA_LENGTH * coxaDirX;
+        const float coxaEndY = coxaBaseY; // Coxa ist horizontal
+        const float coxaEndZ = coxaBaseZ + COXA_LENGTH * coxaDirZ;
+
+        // Vektor von Coxa-Ende zu Fuß
+        const float dx = footX - coxaEndX;
+        const float dy = footY - coxaEndY;
+        const float dz = footZ - coxaEndZ;
+
+        // Projiziere auf die Coxa-Richtung (radial vom Coxa-Ende aus gesehen)
+        // Positiv = nach außen, Negativ = zurück zum Körper
+        const float footRadialFromCoxa = dx * coxaDirX + dz * coxaDirZ;
+
+        // Gesamte horizontale Distanz
+        const float legPlaneHoriz = sqrtf(dx * dx + dz * dz);
+        const float legPlaneDist = sqrtf(legPlaneHoriz * legPlaneHoriz + dy * dy);
 
         // Prüfe Erreichbarkeit
-        if (totalDist > THIGH_LENGTH + SHIN_LENGTH ||
-            totalDist < std::abs(THIGH_LENGTH - SHIN_LENGTH))
+        if (legPlaneDist > FEMUR_LENGTH + TIBIA_LENGTH ||
+            legPlaneDist < fabsf(FEMUR_LENGTH - TIBIA_LENGTH))
         {
             return result; // Nicht erreichbar
         }
 
-        // Kniewinkel mit Kosinussatz (negativ = Knie nach außen)
-        const float cosKnee = (totalDist * totalDist - THIGH_LENGTH * THIGH_LENGTH -
-                               SHIN_LENGTH * SHIN_LENGTH) /
-                              (2.0 * THIGH_LENGTH * SHIN_LENGTH);
-        const float kneeAngle = -acosf(fmaxf(-1.0, fminf(1.0, cosKnee)));
+        // 2D IK für Femur und Tibia mit Kosinussatz
+        const float cosKnee = (legPlaneDist * legPlaneDist -
+                                FEMUR_LENGTH * FEMUR_LENGTH -
+                                TIBIA_LENGTH * TIBIA_LENGTH) /
+                               (2.0 * FEMUR_LENGTH * TIBIA_LENGTH);
 
-        // Horizontale Distanz zum Fuß
-        const float horizDist = sqrtf(footRadial * footRadial + footTangent * footTangent);
+        // Tibia-Winkel (negativ = Knie nach außen gebeugt)
+        const float tibiaAngle = -acosf(fmaxf(-1.0, fminf(1.0, cosKnee)));
 
-        // Vorzeichen für horizontale Richtung
-        const float horizSign = (footRadial >= 0) ? 1.0 : -1.0;
+        // Femur-Winkel
+        const float k1 = FEMUR_LENGTH + TIBIA_LENGTH * cosf(tibiaAngle);
+        const float k2 = TIBIA_LENGTH * sinf(tibiaAngle);
 
-        // Lift-Winkel berechnen
-        const float k1 = THIGH_LENGTH + SHIN_LENGTH * cosf(kneeAngle);
-        const float k2 = SHIN_LENGTH * sinf(kneeAngle);
-        const float liftAngle = atan2f(footVertical, horizDist * horizSign) - atan2f(k2, k1);
+        // Wenn der Fuß zurück zum Körper zeigt, muss die horizontale Distanz negativ sein
+        const float signedHoriz = (footRadialFromCoxa >= 0) ? legPlaneHoriz : -legPlaneHoriz;
+        const float femurAngle = atan2f(dy, signedHoriz) - atan2f(k2, k1);
 
-        // Schwenkwinkel
-        const float swingAngle = atan2f(footTangent, footRadial);
-
-        result.swing = swingAngle;
-        result.lift = liftAngle;
-        result.knee = kneeAngle;
-        result.valid = result.allAnglesInLimit(legIndex, 5);
-
-        if (!result.valid)
-        {
-            Serial.print("footX: ");
-            Serial.print(footX);
-
-            Serial.print("  footZ: ");
-            Serial.println(footZ);
-        }
+        result.coxa = coxaAngle;
+        result.femur = femurAngle;
+        result.tibia = tibiaAngle;
+        result.valid = result.allAnglesInLimit(legIndex, NUM_LEGS);
 
         return result;
     }

@@ -20,7 +20,8 @@ SMS_STS st;
 
 #define NUMBER_OF_LEGS 5
 #define SERVO_NUM (NUMBER_OF_LEGS * 3) // Number of servos
-u8 servoIds[SERVO_NUM] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+// u8 servoIds[SERVO_NUM] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+u8 servoIds[SERVO_NUM] = {5, 14, 15, 7, 8, 9, 4, 2, 3, 10, 11, 6, 13, 1, 12};
 s16 newPosition[SERVO_NUM];
 u16 newSpeed[SERVO_NUM];
 u8 newAcc[SERVO_NUM];
@@ -34,6 +35,6 @@ PentapodKinematics *robot;
 
 std::array<LegAngles, NUMBER_OF_LEGS> extraCalibrations;
 
-float maxTilt = 35.0;
+float maxTilt = 20.0;
 float maxRotation = 25.0;
 float maxStepWidth = 80.0;

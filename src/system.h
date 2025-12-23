@@ -45,15 +45,17 @@ void setup()
         extraCalibrations[i] = LegAngles();
     }
 
-    extraCalibrations[2].lift = -3 * M_PI / 180.0;
-    extraCalibrations[2].swing = 2 * M_PI / 180.0;
+    // extraCalibrations[2].coxa = -3 * M_PI / 180.0;
+    // extraCalibrations[2].swing = 2 * M_PI / 180.0;
 
-    extraCalibrations[4].lift = -2 * M_PI / 180.0;
-    extraCalibrations[4].swing = -1 * M_PI / 180.0;
+    // extraCalibrations[4].lift = -2 * M_PI / 180.0;
+    // extraCalibrations[4].swing = -1 * M_PI / 180.0;
 
     robot = new PentapodKinematics(157.982, // body radius in mm
-                                   120.0,   // thigh length in mm
-                                   175.0);  // shin length in mm
+                                   55.0,    // coxa length in mm
+                                   75.0,   // thigh length in mm
+                                   175.0,   // shin length in mm
+                                   120.0);  // base food extend in mm
 
     robot->setPose(175.0 - 75.0, 0.0, 0.0, 0.0);
 
@@ -127,9 +129,9 @@ void loop()
 
             LegAngles angles = allAngles[legIndex];
 
-            setDegreeForLegAndServo(legIndex, 0, calibration.liftDeg() + angles.liftDeg(), speed, acc);
-            setDegreeForLegAndServo(legIndex, 1, calibration.swingDeg() + angles.swingDeg(), speed, acc);
-            setDegreeForLegAndServo(legIndex, 2, calibration.kneeDeg() + -angles.kneeDeg(), speed, acc);
+            setDegreeForLegAndServo(legIndex, 0, calibration.coxaDeg() + angles.coxaDeg(), speed, acc);
+            setDegreeForLegAndServo(legIndex, 1, calibration.femurDeg() + angles.femurDeg(), speed, acc);
+            setDegreeForLegAndServo(legIndex, 2, calibration.tibiaDeg() + -angles.tibiaDeg(), speed, acc);
         }
         finalizeServoPositions();
     }

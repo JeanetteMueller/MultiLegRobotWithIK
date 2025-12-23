@@ -26,13 +26,13 @@ void printLegAngles(const LegAngles& angles, int legIndex) {
     if (angles.valid) {
 
         Serial.print("θ0=");
-        Serial.print(angles.swingDeg());
+        Serial.print(angles.coxaDeg());
         Serial.print("° (Schwenk), ");
         Serial.print("θ1=");
-        Serial.print(angles.liftDeg());
+        Serial.print(angles.femurDeg());
         Serial.print("° (Heben), ");
         Serial.print("θ2=");
-        Serial.print(angles.kneeDeg());
+        Serial.print(angles.tibiaDeg());
         Serial.print("° (Knie)");
 
     } else {
