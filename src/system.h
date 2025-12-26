@@ -51,13 +51,13 @@ void setup()
     // extraCalibrations[4].lift = -2 * M_PI / 180.0;
     // extraCalibrations[4].swing = -1 * M_PI / 180.0;
 
-    robot = new PentapodKinematics(157.982, // body radius in mm
-                                   55.0,    // coxa length in mm
-                                   75.0,   // thigh length in mm
-                                   175.0,   // shin length in mm
-                                   120.0);  // base food extend in mm
+    robot = new PentapodKinematics(bodyCenterToLegsCircleRadius, // body radius in mm
+                                   coxaLength,                   // coxa length in mm
+                                   thighLength,                  // thigh length in mm
+                                   shinLength,                   // shin length in mm
+                                   startLegExtend);              // base food extend in mm
 
-    robot->setPose(175.0 - 75.0, 0.0, 0.0, 0.0);
+    robot->setPose(startBodyHeightOverGround, 0.0, 0.0, 0.0);
 
     setupInput();
 
@@ -89,12 +89,12 @@ void loop()
     // float tiltY = fmap(input->leftStickHorizontal, -100.0, 100.0, -28.0, 28.0);
     // float rotate = fmap(input->rightPoti, 0.0, 1000.0, -20.0, 20.0);
 
-    robot->setBaseFootExtend(robotControl.legextend / 10);
+    float legExtend = fmap(robotControl.legextend, 0.0, 1000.0, minLegExtend, maxLegExtend);
+    robot->setBaseFootExtend(legExtend);
 
     robot->mainLoop();
 
-    float height = robotControl.height / 10;
-
+    float height = fmap(robotControl.height, 0.0, 1000.0, minHeight, maxHeight);
     float tiltX = fmap(robotControl.roll, -100.0, 100.0, -maxTilt, maxTilt);
     float tiltY = fmap(robotControl.pitch, -100.0, 100.0, -maxTilt, maxTilt);
     float rotate = fmap(robotControl.yaw, -100.0, 100.0, -maxRotation, maxRotation);

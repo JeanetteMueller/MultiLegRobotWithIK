@@ -35,6 +35,19 @@ PentapodKinematics *robot;
 
 std::array<LegAngles, NUMBER_OF_LEGS> extraCalibrations;
 
+float bodyCenterToLegsCircleRadius = 124.175; // mm
+float coxaLength = 54.0; // mm
+float thighLength = 90.0; // mm
+float shinLength = 185.0; // mm
+float startBodyHeightOverGround = 20.0; // mm
+float startLegExtend = 200.0; // mm
+
 float maxTilt = 20.0;
 float maxRotation = 25.0;
 float maxStepWidth = 80.0;
+
+float minHeight = 20.0; // mm
+float maxHeight = thighLength + shinLength - 5.0; // mm
+
+float minLegExtend = -50.0; // mm
+float maxLegExtend = 240.0; // mm

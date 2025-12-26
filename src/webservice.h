@@ -29,8 +29,8 @@ struct RobotControl
     float roll = 0;         // -10 bis 10
     float pitch = 0;        // -10 bis 10
     float yaw = 0;          // -10 bis 10
-    float height = 1750;    // 30 bis 265
-    float legextend = 1200; // 0 bis 200
+    float height = 200;     // 30 bis 265
+    float legextend = 750; // 0 bis 1000
 } robotControl;
 
 // HTML Seite
@@ -201,7 +201,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                 <span class="slider-label">HÖHE</span>
                 <span class="slider-value" id="heightValue">1750</span>
             </div>
-            <input type="range" class="height-slider" id="height" min="0" max="2650" value="1750">
+            <input type="range" class="height-slider" id="height" min="0" max="1000" value="750">
         </div>
 
         <div class="slider-group">
@@ -209,7 +209,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                 <span class="slider-label">BEIN ÜBERHANG</span>
                 <span class="slider-value" id="legextendValue">1200</span>
             </div>
-            <input type="range" class="height-slider" id="legextend" min="0" max="2000" value="1200">
+            <input type="range" class="height-slider" id="legextend" min="0" max="1000" value="1000">
         </div>
 
         <div class="slider-group">

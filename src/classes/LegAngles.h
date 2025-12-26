@@ -43,7 +43,7 @@ struct LegAngles
             }
         }
 
-        if (lift > 90 || lift < -90 || debug)
+        if (lift > 100 || lift < -100 || debug)
         {
             Serial.print(" lift not in limit: ");
             Serial.print(lift);
