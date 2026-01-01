@@ -1,7 +1,7 @@
 /**
- * PentapodKinematics.h
+ * RobotWithKinematics.h
  *
- * C++ Klasse zur Berechnung der inversen Kinematik für einen 5-beinigen Roboter (Pentapod)
+ * C++ Klasse zur Berechnung der inversen Kinematik für einen 4-8 beinigen Roboter
  * mit zylindrischem Körper und 3-DOF Beinen.
  *
  * Jedes Bein hat 3 Gelenke:
@@ -13,8 +13,8 @@
  * Datum: 2025
  */
 
-#ifndef PentapodKinematics_H
-#define PentapodKinematics_H
+#ifndef RobotWithKinematics_H
+#define RobotWithKinematics_H
 
 #include <cmath>
 #include <array>
@@ -23,17 +23,20 @@
 #include "LegAngles.h"
 #include "BodyPose.h"
 
-class PentapodKinematics
+class RobotWithKinematics
 {
 public:
-    static constexpr uint8_t NUM_LEGS = 5;            // Anzahl der Beine
+    uint8_t NUM_LEGS = 5; // Anzahl der Beine
+    static constexpr uint8_t MAX_NUM_LEGS = 8;
     static constexpr uint8_t WALKING_STEP_COUNT = 28; // Anzahl der interpolierten Schritte für Bewegungsabläufe
 
-    std::array<Vector3, NUM_LEGS> baseFootPositions; // Feste Fußpositionen auf dem Boden
-    std::array<Vector3, NUM_LEGS> lastTargetPosition;
-    std::array<Vector3, NUM_LEGS> targetPosition;
+    std::array<Vector3, MAX_NUM_LEGS> baseFootPositions; // Feste Fußpositionen auf dem Boden
+    std::array<Vector3, MAX_NUM_LEGS> lastTargetPosition;
+    std::array<Vector3, MAX_NUM_LEGS> targetPosition;
     uint8_t currentMovingLeg = 0;
     int8_t walkingStep = -1; // Zwischenschritt Nummer des aktuellen Bewegungsablauf
+
+    int8_t currentScorpionLeg = -1;
 
 private:
     uint32_t previousStepMillis = 0;
@@ -53,19 +56,21 @@ private:
 
     BodyPose m_pose;
 
-    static constexpr float rotateCoordinatesByLeg[NUM_LEGS] = {0, -144, 72, -72, 144};
+    static constexpr float rotateCoordinatesByLeg[MAX_NUM_LEGS] = {0, -144, 72, -72, 144};
 
-    std::array<float, NUM_LEGS> m_legBaseAngles; // Basis-Winkel der Beine (72° versetzt)
+    std::array<float, MAX_NUM_LEGS> m_legBaseAngles; // Basis-Winkel der Beine (72° versetzt)
 public:
     /**
      * Konstruktor
      */
-    PentapodKinematics(
+    RobotWithKinematics(
         float bodyRadius,
+        uint8_t numberOfLegs,
         float coxaLength,
         float thighLength,
         float shinLength,
         float baseFootExtend) : BODY_RADIUS(bodyRadius),
+                                NUM_LEGS(numberOfLegs),
                                 COXA_LENGTH(coxaLength),
                                 FEMUR_LENGTH(thighLength),
                                 TIBIA_LENGTH(shinLength),
@@ -119,6 +124,11 @@ public:
                 if (currentMovingLeg >= NUM_LEGS)
                 {
                     currentMovingLeg = currentMovingLeg - NUM_LEGS;
+                }
+
+                if (currentScorpionLeg == currentMovingLeg)
+                {
+                    currentMovingLeg += 1;
                 }
 
                 // if (currentMovingLeg == 0)
@@ -209,6 +219,11 @@ public:
         m_pose = BodyPose::fromDegrees(height, tiltXDeg, tiltZDeg, rotYDeg);
     }
 
+    void setScorpionLeg(uint8_t legIndex)
+    {
+        currentScorpionLeg = legIndex;
+    }
+
     /**
      * Setzt die Koordinaten abweichung fest, in die der Roboter sich bewegen soll
      */
@@ -233,6 +248,56 @@ public:
     const BodyPose &getPose() const
     {
         return m_pose;
+    }
+
+    /**
+     * Neigt den Körper so, dass das gewählte Bein am höchsten Punkt ist.
+     *
+     * @param legIndex Index des Beins (0-4), das am höchsten sein soll
+     * @param tiltAngleDeg Neigungswinkel in Grad (positiv = Bein wird angehoben)
+     */
+    void tiltTowardsLeg(int legIndex, double tiltAngleDeg)
+    {
+        if (legIndex < 0 || legIndex >= NUM_LEGS)
+        {
+            throw std::out_of_range("Leg index must be 0-4");
+        }
+
+        const double tiltAngle = tiltAngleDeg * M_PI / 180.0;
+        const double legAngle = m_legBaseAngles[legIndex];
+
+        // Die Neigungsachse steht senkrecht zur Beinrichtung
+        m_pose.tiltX = -tiltAngle * std::sin(legAngle);
+        m_pose.tiltZ = tiltAngle * std::cos(legAngle);
+    }
+
+    /**
+     * Neigt den Körper in eine beliebige Richtung.
+     *
+     * @param directionDeg Richtung der Neigung in Grad (0° = Bein 0 Richtung)
+     * @param tiltAngleDeg Neigungswinkel in Grad
+     */
+    void tiltInDirection(double directionDeg, double tiltAngleDeg)
+    {
+        const double direction = directionDeg * M_PI / 180.0;
+        const double tiltAngle = tiltAngleDeg * M_PI / 180.0;
+
+        m_pose.tiltX = -tiltAngle * std::sin(direction);
+        m_pose.tiltZ = tiltAngle * std::cos(direction);
+    }
+
+    /**
+     * Setzt Neigung zu einem Bein und behält andere Parameter bei.
+     */
+    void setTiltTowardsLeg(int legIndex, double tiltAngleDeg)
+    {
+        double height = m_pose.height;
+        double rotY = m_pose.rotY;
+
+        tiltTowardsLeg(legIndex, tiltAngleDeg);
+
+        m_pose.height = height;
+        m_pose.rotY = rotY;
     }
 
     /**
@@ -283,13 +348,17 @@ public:
      *
      * @return Array mit 5 LegAngles Strukturen
      */
-    std::array<LegAngles, NUM_LEGS> calculateAllLegAngles() const
+    std::array<LegAngles, MAX_NUM_LEGS> calculateAllLegAngles() const
     {
-        std::array<LegAngles, NUM_LEGS> results;
+        std::array<LegAngles, MAX_NUM_LEGS> results;
 
-        for (uint8_t i = 0; i < NUM_LEGS; ++i)
+        for (uint8_t legIndex = 0; legIndex < NUM_LEGS; ++legIndex)
         {
-            results[i] = calculateLegAngles(i);
+            if (currentScorpionLeg == legIndex)
+            {
+                continue;
+            }
+            results[legIndex] = calculateLegAngles(legIndex);
         }
 
         return results;
@@ -300,9 +369,14 @@ public:
      */
     bool isValidPose() const
     {
-        for (uint8_t i = 0; i < NUM_LEGS; ++i)
+        for (uint8_t legIndex = 0; legIndex < NUM_LEGS; ++legIndex)
         {
-            if (!calculateLegAngles(i).valid)
+            if (currentScorpionLeg == legIndex)
+            {
+                continue;
+            }
+
+            if (!calculateLegAngles(legIndex).valid)
             {
                 return false;
             }
@@ -442,9 +516,9 @@ private:
 
         // 2D IK für Femur und Tibia mit Kosinussatz
         const float cosKnee = (legPlaneDist * legPlaneDist -
-                                FEMUR_LENGTH * FEMUR_LENGTH -
-                                TIBIA_LENGTH * TIBIA_LENGTH) /
-                               (2.0 * FEMUR_LENGTH * TIBIA_LENGTH);
+                               FEMUR_LENGTH * FEMUR_LENGTH -
+                               TIBIA_LENGTH * TIBIA_LENGTH) /
+                              (2.0 * FEMUR_LENGTH * TIBIA_LENGTH);
 
         // Tibia-Winkel (negativ = Knie nach außen gebeugt)
         const float tibiaAngle = -acosf(fmaxf(-1.0, fminf(1.0, cosKnee)));
@@ -460,7 +534,7 @@ private:
         result.coxa = coxaAngle;
         result.femur = femurAngle;
         result.tibia = tibiaAngle;
-        result.valid = result.allAnglesInLimit(legIndex, NUM_LEGS);
+        result.valid = result.allAnglesInLimit(legIndex);
 
         return result;
     }
@@ -480,17 +554,22 @@ private:
         rotated.x = -rotated.x;
         rotated.y = -rotated.y;
 
+        uint8_t numberOfLegs = NUM_LEGS;
+        if (currentScorpionLeg != -1) {
+            numberOfLegs -= 1;
+        }        
+
         if (currentMovingLeg == legIndex)
         {
             // Gesamtbewegung durch 5 mal 4 da ein Bein Schreitet während andere nur schieben
-            newTarget.x -= rotated.x / NUM_LEGS * (NUM_LEGS - 1);
-            newTarget.z -= rotated.z / NUM_LEGS * (NUM_LEGS - 1);
+            newTarget.x -= rotated.x / numberOfLegs * (numberOfLegs - 1);
+            newTarget.z -= rotated.z / numberOfLegs * (numberOfLegs - 1);
         }
         else
         {
             // Gesamtbewegung durch die Anzahl der Beine
-            newTarget.x += rotated.x / NUM_LEGS;
-            newTarget.z += rotated.z / NUM_LEGS;
+            newTarget.x += rotated.x / numberOfLegs;
+            newTarget.z += rotated.z / numberOfLegs;
         }
         return newTarget;
     }
@@ -592,4 +671,4 @@ private:
     }
 };
 
-#endif // PENTAPOD_KINEMATICS_H
+#endif // RobotWithKinematics_H

@@ -31,7 +31,7 @@ u8 acc = 0;
 
 bool calibrated = false;
 
-PentapodKinematics *robot;
+RobotWithKinematics *robot;
 
 std::array<LegAngles, NUMBER_OF_LEGS> extraCalibrations;
 
@@ -51,3 +51,6 @@ float maxHeight = thighLength + shinLength - 5.0; // mm
 
 float minLegExtend = -50.0; // mm
 float maxLegExtend = 240.0; // mm
+
+
+int8_t scorpionLeg = -1;

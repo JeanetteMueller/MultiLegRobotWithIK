@@ -25,7 +25,7 @@ struct LegAngles
     double femurDeg() const { return femur * 180.0 / M_PI; }
     double tibiaDeg() const { return tibia * 180.0 / M_PI; }
 
-    bool allAnglesInLimit(uint8_t legIndex, int legCount) const
+    bool allAnglesInLimit(uint8_t legIndex) const
     {
         bool ok = true;
 

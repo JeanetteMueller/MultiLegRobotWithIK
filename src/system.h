@@ -13,7 +13,7 @@
 #include <SCServo.h>
 #include "classes/Vector3.h"
 
-#include "classes/PentapodKinematics.h"
+#include "classes/RobotWithKinematics.h"
 #include <FastLED.h>
 
 #include "../definitions.h"
@@ -51,11 +51,12 @@ void setup()
     // extraCalibrations[4].lift = -2 * M_PI / 180.0;
     // extraCalibrations[4].swing = -1 * M_PI / 180.0;
 
-    robot = new PentapodKinematics(bodyCenterToLegsCircleRadius, // body radius in mm
-                                   coxaLength,                   // coxa length in mm
-                                   thighLength,                  // thigh length in mm
-                                   shinLength,                   // shin length in mm
-                                   startLegExtend);              // base food extend in mm
+    robot = new RobotWithKinematics(bodyCenterToLegsCircleRadius, // body radius in mm
+                                    NUMBER_OF_LEGS,               // Number of Legs
+                                    coxaLength,                   // coxa length in mm
+                                    thighLength,                  // thigh length in mm
+                                    shinLength,                   // shin length in mm
+                                    startLegExtend);              // base food extend in mm
 
     robot->setPose(startBodyHeightOverGround, 0.0, 0.0, 0.0);
 
@@ -92,8 +93,6 @@ void loop()
     float legExtend = fmap(robotControl.legextend, 0.0, 1000.0, minLegExtend, maxLegExtend);
     robot->setBaseFootExtend(legExtend);
 
-    robot->mainLoop();
-
     float height = fmap(robotControl.height, 0.0, 1000.0, minHeight, maxHeight);
     float tiltX = fmap(robotControl.roll, -100.0, 100.0, -maxTilt, maxTilt);
     float tiltY = fmap(robotControl.pitch, -100.0, 100.0, -maxTilt, maxTilt);
@@ -101,13 +100,21 @@ void loop()
 
     robot->setPose(height, tiltX, tiltY, rotate);
 
+    if (scorpionLeg > -1)
+    {
+        robot->setScorpionLeg(scorpionLeg);
+        robot->setTiltTowardsLeg(scorpionLeg, 15.0);
+    }
+
+    robot->mainLoop();
+
     double walkX = fmap(robotControl.joystickY, -100, 100, -maxStepWidth, maxStepWidth);
     double walkY = fmap(robotControl.joystickX, -100, 100, -maxStepWidth, maxStepWidth);
     robot->setWalkDirection(walkX, walkY);
 
     robot->prepareTargetPositions();
 
-    std::array<LegAngles, PentapodKinematics::NUM_LEGS> allAngles = robot->calculateAllLegAngles();
+    std::array<LegAngles, RobotWithKinematics::MAX_NUM_LEGS> allAngles = robot->calculateAllLegAngles();
 
     if (robot->isValidPose() == false)
     {
@@ -123,15 +130,25 @@ void loop()
         // Serial.println("leg angles good");
         leds[1] = CRGB::Blue;
 
-        for (uint8_t legIndex = 0; legIndex < PentapodKinematics::NUM_LEGS; legIndex++)
+        for (uint8_t legIndex = 0; legIndex < robot->NUM_LEGS; legIndex++)
         {
             LegAngles calibration = extraCalibrations[legIndex];
 
-            LegAngles angles = allAngles[legIndex];
+            if (robot->currentScorpionLeg == legIndex)
+            {
+                setDegreeForLegAndServo(legIndex, 0, calibration.coxaDeg() + 0, speed, acc);
+                setDegreeForLegAndServo(legIndex, 1, calibration.femurDeg() + 45.0, speed, acc);
+                setDegreeForLegAndServo(legIndex, 2, calibration.tibiaDeg() + 45.0, speed, acc);
+            }
+            else
+            {
 
-            setDegreeForLegAndServo(legIndex, 0, calibration.coxaDeg() + angles.coxaDeg(), speed, acc);
-            setDegreeForLegAndServo(legIndex, 1, calibration.femurDeg() + angles.femurDeg(), speed, acc);
-            setDegreeForLegAndServo(legIndex, 2, calibration.tibiaDeg() + -angles.tibiaDeg(), speed, acc);
+                LegAngles angles = allAngles[legIndex];
+
+                setDegreeForLegAndServo(legIndex, 0, calibration.coxaDeg() + angles.coxaDeg(), speed, acc);
+                setDegreeForLegAndServo(legIndex, 1, calibration.femurDeg() + angles.femurDeg(), speed, acc);
+                setDegreeForLegAndServo(legIndex, 2, calibration.tibiaDeg() + -angles.tibiaDeg(), speed, acc);
+            }
         }
         finalizeServoPositions();
     }
