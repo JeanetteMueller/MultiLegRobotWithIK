@@ -56,7 +56,7 @@ private:
 
     BodyPose m_pose;
 
-    static constexpr float rotateCoordinatesByLeg[MAX_NUM_LEGS] = {0, -144, 72, -72, 144};
+    static constexpr float rotateCoordinatesByLeg[MAX_NUM_LEGS] = {0, -144, 72, -72, 144, 0, 0, 0};
 
     std::array<float, MAX_NUM_LEGS> m_legBaseAngles; // Basis-Winkel der Beine (72° versetzt)
 public:
@@ -119,7 +119,19 @@ public:
 
                 lastTargetPosition = targetPosition;
 
-                currentMovingLeg = currentMovingLeg + 2;
+                if (currentScorpionLeg == -1) // default
+                {
+                    currentMovingLeg += 2;
+                }
+                else
+                {
+                    currentMovingLeg += 1;
+                }
+
+                if (currentScorpionLeg == currentMovingLeg)
+                {
+                    currentMovingLeg += 1;
+                }
 
                 if (currentMovingLeg >= NUM_LEGS)
                 {
@@ -146,7 +158,13 @@ public:
             Serial.println(allMovesDone);
         }
     }
-
+    void resetTargetPositions()
+    {
+        for (uint8_t legIndex = 0; legIndex < NUM_LEGS; legIndex++)
+        {
+            targetPosition[legIndex] = baseFootPositions[legIndex];
+        }
+    }
     void prepareTargetPositions()
     {
         for (uint8_t legIndex = 0; legIndex < NUM_LEGS; legIndex++)
@@ -354,10 +372,6 @@ public:
 
         for (uint8_t legIndex = 0; legIndex < NUM_LEGS; ++legIndex)
         {
-            if (currentScorpionLeg == legIndex)
-            {
-                continue;
-            }
             results[legIndex] = calculateLegAngles(legIndex);
         }
 
@@ -371,11 +385,10 @@ public:
     {
         for (uint8_t legIndex = 0; legIndex < NUM_LEGS; ++legIndex)
         {
-            if (currentScorpionLeg == legIndex)
-            {
+            if (currentScorpionLeg == legIndex) {
                 continue;
             }
-
+            
             if (!calculateLegAngles(legIndex).valid)
             {
                 return false;
@@ -554,10 +567,11 @@ private:
         rotated.x = -rotated.x;
         rotated.y = -rotated.y;
 
-        uint8_t numberOfLegs = NUM_LEGS;
-        if (currentScorpionLeg != -1) {
+        float numberOfLegs = static_cast<float>(NUM_LEGS);
+        if (currentScorpionLeg != -1)
+        {
             numberOfLegs -= 1;
-        }        
+        }
 
         if (currentMovingLeg == legIndex)
         {
@@ -577,21 +591,18 @@ private:
     Vector3 getStepTargetPosition(uint8_t legIndex, Vector3 newTarget) const
     {
         Vector3 origin = lastTargetPosition[legIndex];
+        if (origin.x != newTarget.x || origin.y != newTarget.y || origin.z != newTarget.z)
+        {
+            float curveMultiplier = 0.0;
 
-        if (currentMovingLeg == legIndex)
-        {
-            if (origin.x != newTarget.x || origin.y != newTarget.y || origin.z != newTarget.z)
+            if (currentMovingLeg == legIndex)
             {
-                return interpolateSin(origin, newTarget, walkingStep, 1.0);
+                curveMultiplier = 1.0;
             }
+
+            return interpolateSin(origin, newTarget, walkingStep, 1.0);
         }
-        else
-        {
-            if (origin.x != newTarget.x || origin.y != newTarget.y || origin.z != newTarget.z)
-            {
-                return interpolateSin(origin, newTarget, walkingStep, 0);
-            }
-        }
+
         return origin;
     }
 

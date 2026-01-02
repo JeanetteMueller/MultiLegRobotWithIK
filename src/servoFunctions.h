@@ -88,6 +88,33 @@ void calibrate()
   // st.CalibrationOfs(1);
   // st.CalibrationOfs(12);
 
-    Serial.println(" done");
+  Serial.println(" done");
   delay(500);
+}
+
+void moveAllLegs(std::array<LegAngles, RobotWithKinematics::MAX_NUM_LEGS> allAngles)
+{
+  
+
+  for (uint8_t legIndex = 0; legIndex < robot->NUM_LEGS; legIndex++)
+  {
+    LegAngles calibration = extraCalibrations[legIndex];
+
+    if (robot->currentScorpionLeg == legIndex)
+    {
+      setDegreeForLegAndServo(legIndex, 0, calibration.coxaDeg() + 0, speed, acc);
+      setDegreeForLegAndServo(legIndex, 1, calibration.femurDeg() + 60.0, speed, acc);
+      setDegreeForLegAndServo(legIndex, 2, calibration.tibiaDeg() + -100.0, speed, acc);
+    }
+    else
+    {
+
+      LegAngles angles = allAngles[legIndex];
+
+      setDegreeForLegAndServo(legIndex, 0, calibration.coxaDeg() + angles.coxaDeg(), speed, acc);
+      setDegreeForLegAndServo(legIndex, 1, calibration.femurDeg() + angles.femurDeg(), speed, acc);
+      setDegreeForLegAndServo(legIndex, 2, calibration.tibiaDeg() + -angles.tibiaDeg(), speed, acc);
+    }
+  }
+  finalizeServoPositions();
 }

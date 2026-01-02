@@ -103,7 +103,7 @@ void loop()
     if (scorpionLeg > -1)
     {
         robot->setScorpionLeg(scorpionLeg);
-        robot->setTiltTowardsLeg(scorpionLeg, 15.0);
+        // robot->setTiltTowardsLeg(scorpionLeg, 15.0);
     }
 
     robot->mainLoop();
@@ -116,49 +116,31 @@ void loop()
 
     std::array<LegAngles, RobotWithKinematics::MAX_NUM_LEGS> allAngles = robot->calculateAllLegAngles();
 
-    if (robot->isValidPose() == false)
-    {
-        robot->setWalkDirection(walkX * 0.6, walkY * 0.6);
-
-        robot->prepareTargetPositions();
-
-        allAngles = robot->calculateAllLegAngles();
-    }
-
     if (robot->isValidPose())
     {
         // Serial.println("leg angles good");
         leds[1] = CRGB::Blue;
 
-        for (uint8_t legIndex = 0; legIndex < robot->NUM_LEGS; legIndex++)
-        {
-            LegAngles calibration = extraCalibrations[legIndex];
-
-            if (robot->currentScorpionLeg == legIndex)
-            {
-                setDegreeForLegAndServo(legIndex, 0, calibration.coxaDeg() + 0, speed, acc);
-                setDegreeForLegAndServo(legIndex, 1, calibration.femurDeg() + 45.0, speed, acc);
-                setDegreeForLegAndServo(legIndex, 2, calibration.tibiaDeg() + 45.0, speed, acc);
-            }
-            else
-            {
-
-                LegAngles angles = allAngles[legIndex];
-
-                setDegreeForLegAndServo(legIndex, 0, calibration.coxaDeg() + angles.coxaDeg(), speed, acc);
-                setDegreeForLegAndServo(legIndex, 1, calibration.femurDeg() + angles.femurDeg(), speed, acc);
-                setDegreeForLegAndServo(legIndex, 2, calibration.tibiaDeg() + -angles.tibiaDeg(), speed, acc);
-            }
-        }
-        finalizeServoPositions();
+        moveAllLegs(allAngles);
     }
     else
     {
         Serial.println("leg angles not reachable!!! ");
         leds[1] = CRGB::Red;
+
+        robot->setWalkDirection(0, 0);
+
+        robot->resetTargetPositions();
+
+        allAngles = robot->calculateAllLegAngles();
+
+        if (robot->isValidPose())
+        {
+            moveAllLegs(allAngles);
+        }
+        
+        
     }
-
     FastLED.show();
-
     delay(1);
 }

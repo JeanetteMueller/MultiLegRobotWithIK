@@ -33,31 +33,37 @@ struct LegAngles
         float lift = femurDeg();
         float knee = tibiaDeg();
 
-        if (swing > 60 || swing < -60 || debug)
+        float limit_swing = 60;
+        float limit_lift = 130;
+        float limit_knee = 180-40;
+
+        if (swing > limit_swing || swing < -limit_swing || debug)
         {
             Serial.print(" swing not in limit: ");
             Serial.print(swing);
-            if (swing > 60 || swing < -60)
+            if (swing > limit_swing || swing < -limit_swing)
             {
                 ok = false;
             }
         }
 
-        if (lift > 100 || lift < -100 || debug)
+
+
+        if (lift > limit_lift || lift < -limit_lift || debug)
         {
             Serial.print(" lift not in limit: ");
             Serial.print(lift);
-            if (lift > 90 || lift < -90)
+            if (lift > limit_lift || lift < -limit_lift)
             {
                 ok = false;
             }
         }
 
-        if (knee > 180 - 40 || knee < -180 - 40 || debug)
+        if (knee > limit_knee || knee < -limit_knee || debug)
         {
             Serial.print(" knee not in limit: ");
             Serial.print(knee);
-            if (knee > 180 - 40 || knee < -180 - 40)
+            if (knee > limit_knee || knee < -limit_knee)
             {
                 ok = false;
             }

@@ -26,11 +26,11 @@ struct RobotControl
 {
     float joystickX = 0;    // -100 bis 100
     float joystickY = 0;    // -100 bis 100
-    float roll = 0;         // -10 bis 10
-    float pitch = 0;        // -10 bis 10
-    float yaw = 0;          // -10 bis 10
-    float height = 200;     // 30 bis 265
-    float legextend = 750; // 0 bis 1000
+    float roll = 0;         // -100 bis 100
+    float pitch = 0;        // -100 bis 100
+    float yaw = 0;          // -100 bis 100
+    float height = 850;     // 0 bis 1000
+    float legextend = 550;  // 0 bis 1000
 } robotControl;
 
 // HTML Seite
@@ -201,7 +201,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                 <span class="slider-label">HÖHE</span>
                 <span class="slider-value" id="heightValue">1750</span>
             </div>
-            <input type="range" class="height-slider" id="height" min="0" max="1000" value="750">
+            <input type="range" class="height-slider" id="height" min="0" max="1000" value="850">
         </div>
 
         <div class="slider-group">
@@ -209,7 +209,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                 <span class="slider-label">BEIN ÜBERHANG</span>
                 <span class="slider-value" id="legextendValue">1200</span>
             </div>
-            <input type="range" class="height-slider" id="legextend" min="0" max="1000" value="1000">
+            <input type="range" class="height-slider" id="legextend" min="0" max="1000" value="550">
         </div>
 
         <div class="slider-group">
@@ -275,11 +275,11 @@ const char index_html[] PROGMEM = R"rawliteral(
                 const data = {
                     jx: joystickData.x,
                     jy: joystickData.y,
-                    roll: parseInt(document.getElementById('roll').value),
-                    pitch: parseInt(document.getElementById('pitch').value),
-                    yaw: parseInt(document.getElementById('yaw').value),
-                    height: parseInt(document.getElementById('height').value),
-                    legextend: parseInt(document.getElementById('legextend').value)
+                    roll: parseFloat(document.getElementById('roll').value),
+                    pitch: parseFloat(document.getElementById('pitch').value),
+                    yaw: parseFloat(document.getElementById('yaw').value),
+                    height: parseFloat(document.getElementById('height').value),
+                    legextend: parseFloat(document.getElementById('legextend').value)
                 };
                 ws.send(JSON.stringify(data));
             }
