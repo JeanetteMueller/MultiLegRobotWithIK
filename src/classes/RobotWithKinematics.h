@@ -28,7 +28,7 @@ class RobotWithKinematics
 public:
     uint8_t NUM_LEGS = 5; // Anzahl der Beine
     static constexpr uint8_t MAX_NUM_LEGS = 8;
-    static constexpr uint8_t WALKING_STEP_COUNT = 28; // Anzahl der interpolierten Schritte für Bewegungsabläufe
+    static constexpr uint8_t WALKING_STEP_COUNT = 20; // Anzahl der interpolierten Schritte für Bewegungsabläufe
 
     std::array<Vector3, MAX_NUM_LEGS> baseFootPositions; // Feste Fußpositionen auf dem Boden
     std::array<Vector3, MAX_NUM_LEGS> lastTargetPosition;
@@ -97,7 +97,7 @@ public:
      */
     void mainLoop()
     {
-        if (millis() - previousStepMillis >= 5)
+        if (millis() - previousStepMillis >= 6)
         {
             if (currentMovingLeg == 0 &&
                 walkingStep == 0 &&
@@ -105,7 +105,7 @@ public:
                 (walk_y < 5 && walk_y > -5) &&
                 allMovesDone == true)
             {
-                Serial.println("NO MOVEMENT AT ALL");
+                // Serial.println("NO MOVEMENT AT ALL");
                 return;
             }
 
@@ -600,7 +600,7 @@ private:
                 curveMultiplier = 1.0;
             }
 
-            return interpolateSin(origin, newTarget, walkingStep, 1.0);
+            return interpolateSin(origin, newTarget, walkingStep, curveMultiplier);
         }
 
         return origin;

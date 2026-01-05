@@ -20,7 +20,6 @@
 #include "basicFunctions.h"
 #include "servoFunctions.h"
 #include "input.h"
-#include "webservice.h"
 
 void setup()
 {
@@ -37,8 +36,6 @@ void setup()
     {
         delay(500);
     }
-
-    setupWebServer();
 
     for (uint8_t i = 0; i < NUMBER_OF_LEGS; i++)
     {
@@ -67,9 +64,6 @@ void setup()
 
 void loop()
 {
-    webSocket.loop();
-    server.handleClient();
-
     loopInput();
 
     if (calibrated == false)
@@ -85,18 +79,28 @@ void loop()
         FastLED.show();
     }
 
-    // float height = fmap(input->leftPoit, 0.0, 1000.0, 50.0, 290.0);
-    // float tiltX = fmap(input->leftStickVertical, -100.0, 100.0, -28.0, 28.0);
-    // float tiltY = fmap(input->leftStickHorizontal, -100.0, 100.0, -28.0, 28.0);
-    // float rotate = fmap(input->rightPoti, 0.0, 1000.0, -20.0, 20.0);
+    float legExtend = 0;
 
-    float legExtend = fmap(robotControl.legextend, 0.0, 1000.0, minLegExtend, maxLegExtend);
+    if (input->switchRightInside == 0)
+    {
+        legExtend = 50;
+    }
+    else if (input->switchRightInside == 1)
+    {
+        legExtend = 110;
+    }
+    else if (input->switchRightInside == 2)
+    {
+        legExtend = 190;
+    }
+
+    // float legExtend = fmap(input->rightPoti, 0.0, 1000.0, minLegExtend, maxLegExtend);
     robot->setBaseFootExtend(legExtend);
 
-    float height = fmap(robotControl.height, 0.0, 1000.0, minHeight, maxHeight);
-    float tiltX = fmap(robotControl.roll, -100.0, 100.0, -maxTilt, maxTilt);
-    float tiltY = fmap(robotControl.pitch, -100.0, 100.0, -maxTilt, maxTilt);
-    float rotate = fmap(robotControl.yaw, -100.0, 100.0, -maxRotation, maxRotation);
+    float height = fmap(input->leftPoit, 0.0, 1000.0, minHeight, maxHeight);
+    float tiltX = fmap(input->leftStickVertical, -100.0, 100.0, -maxTilt, maxTilt);
+    float tiltY = fmap(input->leftStickHorizontal, -100.0, 100.0, -maxTilt, maxTilt);
+    float rotate = fmap(input->rightPoti, 0.0, 1000.0, -maxRotation, maxRotation);
 
     robot->setPose(height, tiltX, tiltY, rotate);
 
@@ -108,8 +112,9 @@ void loop()
 
     robot->mainLoop();
 
-    double walkX = fmap(robotControl.joystickY, -100, 100, -maxStepWidth, maxStepWidth);
-    double walkY = fmap(robotControl.joystickX, -100, 100, -maxStepWidth, maxStepWidth);
+    double walkX = fmap(input->rightStickVertical, -100, 100, -maxStepWidth, maxStepWidth);
+    double walkY = fmap(input->rightStickHorizontal, -100, 100, -maxStepWidth, maxStepWidth);
+
     robot->setWalkDirection(walkX, walkY);
 
     robot->prepareTargetPositions();
@@ -138,9 +143,7 @@ void loop()
         {
             moveAllLegs(allAngles);
         }
-        
-        
     }
     FastLED.show();
-    delay(1);
+    // delay(1);
 }

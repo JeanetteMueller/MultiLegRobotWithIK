@@ -46,11 +46,11 @@ float maxTilt = 20.0;
 float maxRotation = 25.0;
 float maxStepWidth = 100.0;
 
-float minHeight = 20.0; // mm
+float minHeight = 30.0; // mm
 float maxHeight = thighLength + shinLength - 15.0; // mm
 
 float minLegExtend = 0.0; // mm
-float maxLegExtend = 200.0; // mm
+float maxLegExtend = 190.0; // mm
 
 
 int8_t scorpionLeg = -1;
