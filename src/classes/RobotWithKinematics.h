@@ -33,10 +33,9 @@ public:
     std::array<Vector3, MAX_NUM_LEGS> baseFootPositions; // Feste Fußpositionen auf dem Boden
     std::array<Vector3, MAX_NUM_LEGS> lastTargetPosition;
     std::array<Vector3, MAX_NUM_LEGS> targetPosition;
+
     uint8_t currentMovingLeg = 0;
     int8_t walkingStep = -1; // Zwischenschritt Nummer des aktuellen Bewegungsablauf
-
-    int8_t currentScorpionLeg = -1;
 
 private:
     uint32_t previousStepMillis = 0;
@@ -97,7 +96,7 @@ public:
      */
     void mainLoop()
     {
-        if (millis() - previousStepMillis >= 6)
+        if (millis() - previousStepMillis >= 12)
         {
             if (currentMovingLeg == 0 &&
                 walkingStep == 0 &&
@@ -119,34 +118,12 @@ public:
 
                 lastTargetPosition = targetPosition;
 
-                if (currentScorpionLeg == -1) // default
-                {
-                    currentMovingLeg += 2;
-                }
-                else
-                {
-                    currentMovingLeg += 1;
-                }
-
-                if (currentScorpionLeg == currentMovingLeg)
-                {
-                    currentMovingLeg += 1;
-                }
+                currentMovingLeg += 2;
 
                 if (currentMovingLeg >= NUM_LEGS)
                 {
                     currentMovingLeg = currentMovingLeg - NUM_LEGS;
                 }
-
-                if (currentScorpionLeg == currentMovingLeg)
-                {
-                    currentMovingLeg += 1;
-                }
-
-                // if (currentMovingLeg == 0)
-                // {
-                //     allMovesDone = true;
-                // }
             }
 
             Serial.print("currentMovingLeg: ");
@@ -158,6 +135,50 @@ public:
             Serial.println(allMovesDone);
         }
     }
+
+    /**
+     * Basis-Gelenkwerte für den Robot in transportfähigem Zustand
+     */
+    std::array<LegAngles, MAX_NUM_LEGS> standBy() const
+    {
+        std::array<LegAngles, MAX_NUM_LEGS> results;
+
+        for (uint8_t legIndex = 0; legIndex < NUM_LEGS; legIndex++)
+        {
+            LegAngles la;
+            la.valid = true;
+            la.coxa = degToRad(0);
+            la.femur = degToRad(110);
+            la.tibia = degToRad(80 - legIndex * (10 - legIndex));
+
+            results[legIndex] = la;
+        }
+        return results;
+    }
+
+    /**
+     * Gelenkwerte für den Übergang zwischen Standby und regulärem verarbeiten der Input Daten
+     */
+    std::array<LegAngles, MAX_NUM_LEGS> preOperationPositions() const
+    {
+        std::array<LegAngles, MAX_NUM_LEGS> results;
+
+        for (uint8_t legIndex = 0; legIndex < NUM_LEGS; legIndex++)
+        {
+            LegAngles la;
+            la.valid = true;
+            la.coxa = degToRad(0);
+            la.femur = degToRad(90);
+            la.tibia = degToRad(-130);
+
+            results[legIndex] = la;
+        }
+        return results;
+    }
+
+    /**
+     * Setze alle Zielkoordinaten zurück
+     */
     void resetTargetPositions()
     {
         for (uint8_t legIndex = 0; legIndex < NUM_LEGS; legIndex++)
@@ -165,6 +186,10 @@ public:
             targetPosition[legIndex] = baseFootPositions[legIndex];
         }
     }
+
+    /**
+     * Zielkoordinaten vorbereiten bevor der Lauf-Loop starten kann
+     */
     void prepareTargetPositions()
     {
         for (uint8_t legIndex = 0; legIndex < NUM_LEGS; legIndex++)
@@ -195,6 +220,9 @@ public:
         }
     }
 
+    /**
+     * Setzt den Basis-Abstand zwischen dem Zentrum des Robots und den Füßen
+     */
     void setBaseFootExtend(float newValue)
     {
         if (currentMovingLeg == 0 && walkingStep == 0)
@@ -235,11 +263,6 @@ public:
                  float tiltXDeg, float tiltZDeg, float rotYDeg)
     {
         m_pose = BodyPose::fromDegrees(height, tiltXDeg, tiltZDeg, rotYDeg);
-    }
-
-    void setScorpionLeg(uint8_t legIndex)
-    {
-        currentScorpionLeg = legIndex;
     }
 
     /**
@@ -385,10 +408,6 @@ public:
     {
         for (uint8_t legIndex = 0; legIndex < NUM_LEGS; ++legIndex)
         {
-            if (currentScorpionLeg == legIndex) {
-                continue;
-            }
-            
             if (!calculateLegAngles(legIndex).valid)
             {
                 return false;
@@ -568,10 +587,6 @@ private:
         rotated.y = -rotated.y;
 
         float numberOfLegs = static_cast<float>(NUM_LEGS);
-        if (currentScorpionLeg != -1)
-        {
-            numberOfLegs -= 1;
-        }
 
         if (currentMovingLeg == legIndex)
         {
@@ -597,7 +612,7 @@ private:
 
             if (currentMovingLeg == legIndex)
             {
-                curveMultiplier = 1.0;
+                curveMultiplier = 1.1;
             }
 
             return interpolateSin(origin, newTarget, walkingStep, curveMultiplier);

@@ -36,21 +36,18 @@ RobotWithKinematics *robot;
 std::array<LegAngles, NUMBER_OF_LEGS> extraCalibrations;
 
 float bodyCenterToLegsCircleRadius = 124.175; // mm
-float coxaLength = 54.0; // mm
-float thighLength = 90.0; // mm
-float shinLength = 185.0; // mm
-float startBodyHeightOverGround = 160.0; // mm
-float startLegExtend = 150.0; // mm
+float coxaLength = 54.0;                      // mm
+float thighLength = 90.0;                     // mm
+float shinLength = 185.0;                     // mm
+float startBodyHeightOverGround = 160.0;      // mm
+float startLegExtend = 150.0;                 // mm
 
 float maxTilt = 20.0;
 float maxRotation = 25.0;
-float maxStepWidth = 100.0;
+float maxStepWidth = 80.0;
 
-float minHeight = 30.0; // mm
+float minHeight = 40.0;                            // mm
 float maxHeight = thighLength + shinLength - 15.0; // mm
 
-float minLegExtend = 0.0; // mm
+float minLegExtend = 0.0;   // mm
 float maxLegExtend = 190.0; // mm
-
-
-int8_t scorpionLeg = -1;

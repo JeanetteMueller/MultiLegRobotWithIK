@@ -42,6 +42,7 @@ void setup()
         extraCalibrations[i] = LegAngles();
     }
 
+    extraCalibrations[0].coxa = -3 * M_PI / 180.0;
     // extraCalibrations[2].coxa = -3 * M_PI / 180.0;
     // extraCalibrations[2].swing = 2 * M_PI / 180.0;
 
@@ -61,6 +62,10 @@ void setup()
 
     initServoPositions();
 }
+uint32_t previousStepMillis = 0;
+int8_t standByLeg = 0;
+bool standby = false;
+uint8_t preOperationalCount = 0;
 
 void loop()
 {
@@ -79,69 +84,121 @@ void loop()
         FastLED.show();
     }
 
-    float legExtend = 0;
-
-    if (input->switchRightInside == 0)
+    if (input->switchLeftInside == Top)
     {
-        legExtend = 50;
+        Serial.println("standby");
+
+        standby = true;
+        preOperationalCount = 0;
+
+        if (millis() - previousStepMillis >= 700)
+        {
+            previousStepMillis = millis();
+
+            std::array<LegAngles, RobotWithKinematics::MAX_NUM_LEGS> standByAngles = robot->standBy();
+
+            LegAngles angles = standByAngles[standByLeg];
+            moveOneLeg(standByLeg, angles, true);
+
+            standByLeg++;
+
+            if (standByLeg > robot->NUM_LEGS - 1)
+            {
+                standByLeg = 0;
+            }
+        }
     }
-    else if (input->switchRightInside == 1)
+    else if (standby == true)
     {
-        legExtend = 110;
-    }
-    else if (input->switchRightInside == 2)
-    {
-        legExtend = 190;
-    }
+        Serial.println("standby is ending soon");
 
-    // float legExtend = fmap(input->rightPoti, 0.0, 1000.0, minLegExtend, maxLegExtend);
-    robot->setBaseFootExtend(legExtend);
+        if (millis() - previousStepMillis >= 700)
+        {
+            previousStepMillis = millis();
 
-    float height = fmap(input->leftPoit, 0.0, 1000.0, minHeight, maxHeight);
-    float tiltX = fmap(input->leftStickVertical, -100.0, 100.0, -maxTilt, maxTilt);
-    float tiltY = fmap(input->leftStickHorizontal, -100.0, 100.0, -maxTilt, maxTilt);
-    float rotate = fmap(input->rightPoti, 0.0, 1000.0, -maxRotation, maxRotation);
+            if (preOperationalCount == 0)
+            {
+                standByLeg = robot->NUM_LEGS - 1;
+            }
 
-    robot->setPose(height, tiltX, tiltY, rotate);
+            if (standByLeg >= 0)
+            {
+                std::array<LegAngles, RobotWithKinematics::MAX_NUM_LEGS> standByAngles = robot->preOperationPositions();
 
-    if (scorpionLeg > -1)
-    {
-        robot->setScorpionLeg(scorpionLeg);
-        // robot->setTiltTowardsLeg(scorpionLeg, 15.0);
-    }
+                LegAngles angles = standByAngles[standByLeg];
+                moveOneLeg(standByLeg, angles, true);
 
-    robot->mainLoop();
+                preOperationalCount++;
+            }
+            standByLeg--;
 
-    double walkX = fmap(input->rightStickVertical, -100, 100, -maxStepWidth, maxStepWidth);
-    double walkY = fmap(input->rightStickHorizontal, -100, 100, -maxStepWidth, maxStepWidth);
-
-    robot->setWalkDirection(walkX, walkY);
-
-    robot->prepareTargetPositions();
-
-    std::array<LegAngles, RobotWithKinematics::MAX_NUM_LEGS> allAngles = robot->calculateAllLegAngles();
-
-    if (robot->isValidPose())
-    {
-        // Serial.println("leg angles good");
-        leds[1] = CRGB::Blue;
-
-        moveAllLegs(allAngles);
+            if (standByLeg < -2)
+            {
+                standby = false;
+            }
+        }
     }
     else
     {
-        Serial.println("leg angles not reachable!!! ");
-        leds[1] = CRGB::Red;
 
-        robot->setWalkDirection(0, 0);
+        float legExtend = 0;
 
-        robot->resetTargetPositions();
+        if (input->switchRightInside == 0)
+        {
+            legExtend = 190;
+        }
+        else if (input->switchRightInside == 1)
+        {
+            legExtend = 120;
+        }
+        else if (input->switchRightInside == 2)
+        {
+            legExtend = 70;
+        }
 
-        allAngles = robot->calculateAllLegAngles();
+        // float legExtend = fmap(input->rightPoti, 0.0, 1000.0, minLegExtend, maxLegExtend);
+        robot->setBaseFootExtend(legExtend);
+
+        float height = fmap(input->leftPoit, 0.0, 1000.0, minHeight, maxHeight);
+        float tiltX = fmap(input->leftStickVertical, -100.0, 100.0, -maxTilt, maxTilt);
+        float tiltY = fmap(input->leftStickHorizontal, -100.0, 100.0, -maxTilt, maxTilt);
+        float rotate = fmap(input->rightPoti, 0.0, 1000.0, -maxRotation, maxRotation);
+
+        robot->setPose(height, tiltX, tiltY, rotate);
+
+        robot->mainLoop();
+
+        double walkX = fmap(input->rightStickVertical, -100, 100, -maxStepWidth, maxStepWidth);
+        double walkY = fmap(input->rightStickHorizontal, -100, 100, -maxStepWidth, maxStepWidth);
+
+        robot->setWalkDirection(walkX, walkY);
+
+        robot->prepareTargetPositions();
+
+        std::array<LegAngles, RobotWithKinematics::MAX_NUM_LEGS> allAngles = robot->calculateAllLegAngles();
 
         if (robot->isValidPose())
         {
+            // Serial.println("leg angles good");
+            leds[1] = CRGB::Blue;
+
             moveAllLegs(allAngles);
+        }
+        else
+        {
+            // Serial.println("leg angles not reachable!!! ");
+            // leds[1] = CRGB::Red;
+
+            // // robot->setWalkDirection(0, 0);
+
+            // robot->resetTargetPositions();
+
+            // allAngles = robot->calculateAllLegAngles();
+
+            // if (robot->isValidPose())
+            // {
+            //     moveAllLegs(allAngles);
+            // }
         }
     }
     FastLED.show();

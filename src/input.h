@@ -60,7 +60,7 @@ void setDefaultValues()
     ibusVar02 = 1500;
     ibusVar03 = 1500;
 
-    ibusVar04 = 1500;
+    ibusVar04 = 1000;
     ibusVar05 = 1500;
 
     ibusVar06 = 1500;
