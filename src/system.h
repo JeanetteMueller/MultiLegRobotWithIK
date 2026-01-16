@@ -61,6 +61,10 @@ void setup()
     setupInput();
 
     initServoPositions();
+
+    delay(200);
+    loopInput();
+    delay(500);
 }
 uint32_t previousStepMillis = 0;
 int8_t standByLeg = 0;
@@ -162,16 +166,23 @@ void loop()
         float height = fmap(input->leftPoit, 0.0, 1000.0, minHeight, maxHeight);
         float tiltX = fmap(input->leftStickVertical, -100.0, 100.0, -maxTilt, maxTilt);
         float tiltY = fmap(input->leftStickHorizontal, -100.0, 100.0, -maxTilt, maxTilt);
-        float rotate = fmap(input->rightPoti, 0.0, 1000.0, -maxRotation, maxRotation);
+        float rotateTorso = fmap(input->rightPoti, 0.0, 1000.0, -maxRotation, maxRotation);
 
-        robot->setPose(height, tiltX, tiltY, rotate);
+        robot->setPose(height, tiltX, tiltY, rotateTorso);
 
         robot->mainLoop();
 
-        double walkX = fmap(input->rightStickVertical, -100, 100, -maxStepWidth, maxStepWidth);
-        double walkY = fmap(input->rightStickHorizontal, -100, 100, -maxStepWidth, maxStepWidth);
+        float walkX = fmap(input->rightStickVertical, -100, 100, -maxStepWidth, maxStepWidth);
+        float walkY = fmap(input->rightStickHorizontal, -100, 100, -maxStepWidth, maxStepWidth);
 
-        robot->setWalkDirection(walkX, walkY);
+        float rotateBody = 0;
+        if (input->switchLeftOutside == Top) {
+            rotateBody = maxRotationBodyOnPoint;
+        }else if (input->switchLeftOutside == Bottom) {
+            rotateBody = -maxRotationBodyOnPoint;
+        }
+
+        robot->setWalkDirection(walkX, walkY, rotateBody);
 
         robot->prepareTargetPositions();
 

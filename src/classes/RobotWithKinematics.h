@@ -52,6 +52,7 @@ private:
 
     float walk_x = 0;
     float walk_y = 0;
+    float rotate_Body = 0;
 
     BodyPose m_pose;
 
@@ -102,6 +103,7 @@ public:
                 walkingStep == 0 &&
                 (walk_x < 5 && walk_x > -5) &&
                 (walk_y < 5 && walk_y > -5) &&
+                (rotate_Body < 5 && rotate_Body > -5) &&
                 allMovesDone == true)
             {
                 // Serial.println("NO MOVEMENT AT ALL");
@@ -168,8 +170,8 @@ public:
             LegAngles la;
             la.valid = true;
             la.coxa = degToRad(0);
-            la.femur = degToRad(90);
-            la.tibia = degToRad(-130);
+            la.femur = degToRad(90.24);
+            la.tibia = degToRad(-132.75);
 
             results[legIndex] = la;
         }
@@ -196,8 +198,9 @@ public:
         {
             Vector3 newTarget;
 
-            if ((walk_x < 5 && walk_x > -5) &&
-                (walk_y < 5 && walk_y > -5))
+            if (walk_x < 5 && walk_x > -5 &&
+                walk_y < 5 && walk_y > -5 &&
+                rotate_Body < 5 && rotate_Body > -5)
             {
                 newTarget = baseFootPositions[legIndex];
 
@@ -268,15 +271,16 @@ public:
     /**
      * Setzt die Koordinaten abweichung fest, in die der Roboter sich bewegen soll
      */
-    void setWalkDirection(float x, float y)
+    void setWalkDirection(float x, float y, float r)
     {
         if (currentMovingLeg == 0 && walkingStep == 0)
         {
             // andere richtung und geschwindigkeit immer nur wenn alle Füße am Boden sind
-            if (walk_x != x || walk_y != y)
+            if (walk_x != x || walk_y != y || rotate_Body != r)
             {
                 walk_x = x;
                 walk_y = y;
+                rotate_Body = r;
 
                 allMovesDone = false;
             }
@@ -574,7 +578,12 @@ private:
     Vector3 newTargetPosition(uint8_t legIndex) const
     {
         Vector3 origin = lastTargetPosition[legIndex];
-        Vector3 walkVector = Vector3(walk_x, 0, walk_y);
+
+        float x = walk_x;
+        float y = walk_y;
+        float r = rotate_Body;
+
+        Vector3 walkVector = Vector3(x, 0, y);
         Vector3 newTarget = origin;
         float rotation = rotateCoordinatesByLeg[legIndex];
         Vector3 rotated = walkVector.rotate(degToRad(rotation));
@@ -584,7 +593,18 @@ private:
         // rotated.y = rotated.y / 2 - rotated.y;
 
         rotated.x = -rotated.x;
-        rotated.y = -rotated.y;
+
+        if (legIndex == 0) {
+            rotated.z += r;
+        } else if (legIndex == 1) {
+            rotated.x -= r;
+        } else if (legIndex == 2) {
+            rotated.z -= r;
+        } else if (legIndex == 3) {
+            rotated.z -= r;
+        } else if (legIndex == 4) {
+            rotated.x += r;
+        } 
 
         float numberOfLegs = static_cast<float>(NUM_LEGS);
 
