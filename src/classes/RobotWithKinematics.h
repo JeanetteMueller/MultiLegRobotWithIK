@@ -594,6 +594,7 @@ private:
 
         rotated.x = -rotated.x;
 
+        //spezielle seitliche anpassung für die rotation des ganzen körpers auf der stelle
         if (legIndex == 0) {
             rotated.z += r;
         } else if (legIndex == 1) {
