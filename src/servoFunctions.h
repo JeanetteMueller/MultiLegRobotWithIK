@@ -108,7 +108,7 @@ void moveOneLeg(uint8_t legIndex, LegAngles angles, bool finalize)
     u8 singleServoIds[3] = {servoIds[legIndex * 3], servoIds[legIndex * 3 + 1], servoIds[legIndex * 3 + 2]};
 
     s16 singlePosition[3] = {newPosition[legIndex * 3], newPosition[legIndex * 3 + 1], newPosition[legIndex * 3 + 2]};
-    u16 singleSpeed[3] = {2000, 2000, 2000};
+    u16 singleSpeed[3] = {3000, 3000, 3000};
     u8 singleAcc[3] = {0, 0, 0};
 
     st.SyncWritePosEx(singleServoIds, 3, singlePosition, singleSpeed, singleAcc);

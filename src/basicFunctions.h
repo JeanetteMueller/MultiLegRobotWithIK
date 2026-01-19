@@ -16,6 +16,10 @@ float cosFromDegree(float degree)
 {
     return cos(degree * M_PI / 180);
 }
+float degToRad(float deg)
+{
+    return deg * M_PI / 180.0f;
+}
 
 void printLegAngles(const LegAngles &angles, int legIndex)
 {
@@ -42,10 +46,7 @@ void printLegAngles(const LegAngles &angles, int legIndex)
     }
 }
 
-float degToRad(float deg)
-{
-    return deg * M_PI / 180.0f;
-}
+
 
 double getAngleFromVector(double x, double y)
 {

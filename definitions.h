@@ -33,9 +33,9 @@ bool calibrated = false;
 
 RobotWithKinematics *robot;
 
-std::array<LegAngles, NUMBER_OF_LEGS> extraCalibrations;
+#include "extraCalibrations.h";
 
-float bodyCenterToLegsCircleRadius = 124.175; // mm
+float bodyCenterToLegsCircleRadius = 104.175; // mm
 float coxaLength = 54.0;                      // mm
 float thighLength = 90.0;                     // mm
 float shinLength = 185.0;                     // mm

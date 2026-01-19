@@ -16,8 +16,11 @@
 #include "classes/RobotWithKinematics.h"
 #include <FastLED.h>
 
-#include "../definitions.h"
+
 #include "basicFunctions.h"
+
+#include "../definitions.h"
+
 #include "servoFunctions.h"
 #include "input.h"
 
@@ -37,17 +40,7 @@ void setup()
         delay(500);
     }
 
-    for (uint8_t i = 0; i < NUMBER_OF_LEGS; i++)
-    {
-        extraCalibrations[i] = LegAngles();
-    }
-
-    extraCalibrations[0].coxa = -3 * M_PI / 180.0;
-    // extraCalibrations[2].coxa = -3 * M_PI / 180.0;
-    // extraCalibrations[2].swing = 2 * M_PI / 180.0;
-
-    // extraCalibrations[4].lift = -2 * M_PI / 180.0;
-    // extraCalibrations[4].swing = -1 * M_PI / 180.0;
+    setupExtraCalibrations();
 
     robot = new RobotWithKinematics(bodyCenterToLegsCircleRadius, // body radius in mm
                                     NUMBER_OF_LEGS,               // Number of Legs

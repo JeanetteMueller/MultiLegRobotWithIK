@@ -149,9 +149,13 @@ public:
         {
             LegAngles la;
             la.valid = true;
+            // la.coxa = degToRad(0);
+            // la.femur = degToRad(100);
+            // la.tibia = degToRad(90 - legIndex * (14.0 - legIndex));
+
             la.coxa = degToRad(0);
-            la.femur = degToRad(110);
-            la.tibia = degToRad(80 - legIndex * (10 - legIndex));
+            la.femur = degToRad(0);
+            la.tibia = degToRad(0);
 
             results[legIndex] = la;
         }
@@ -588,27 +592,12 @@ private:
         float rotation = rotateCoordinatesByLeg[legIndex];
         Vector3 rotated = walkVector.rotate(degToRad(rotation));
 
-        // zur hälfte im negativen, zur hälfte im positiven um die vole brandbreite der Beine in der Bewegung zu nutzen
-        // rotated.x = rotated.x / 2 - rotated.x;
-        // rotated.y = rotated.y / 2 - rotated.y;
-
         rotated.x = -rotated.x;
 
-        //spezielle seitliche anpassung für die rotation des ganzen körpers auf der stelle
-        if (legIndex == 0) {
-            rotated.z += r;
-        } else if (legIndex == 1) {
-            rotated.x -= r;
-        } else if (legIndex == 2) {
-            rotated.z -= r;
-        } else if (legIndex == 3) {
-            rotated.z -= r;
-        } else if (legIndex == 4) {
-            rotated.x += r;
-        } 
+        // spezielle seitliche anpassung für die rotation des ganzen körpers auf der stelle
+        rotated = modifyVectorToRotateOnPosition(legIndex, rotated, r);
 
         float numberOfLegs = static_cast<float>(NUM_LEGS);
-
         if (currentMovingLeg == legIndex)
         {
             // Gesamtbewegung durch 5 mal 4 da ein Bein Schreitet während andere nur schieben
@@ -622,6 +611,30 @@ private:
             newTarget.z += rotated.z / numberOfLegs;
         }
         return newTarget;
+    }
+    Vector3 modifyVectorToRotateOnPosition(uint8_t legIndex, Vector3 vector, float rotation) const
+    {
+        if (legIndex == 0)
+        {
+            vector.z += rotation;
+        }
+        else if (legIndex == 1)
+        {
+            vector.x -= rotation;
+        }
+        else if (legIndex == 2)
+        {
+            vector.z -= rotation;
+        }
+        else if (legIndex == 3)
+        {
+            vector.z -= rotation;
+        }
+        else if (legIndex == 4)
+        {
+            vector.x += rotation;
+        }
+        return vector;
     }
 
     Vector3 getStepTargetPosition(uint8_t legIndex, Vector3 newTarget) const
