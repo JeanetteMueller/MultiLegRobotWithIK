@@ -137,7 +137,7 @@ void loop()
     }
     else
     {
-
+        previousStepMillis = 0;
         float legExtend = 0;
 
         if (input->switchRightInside == 0)

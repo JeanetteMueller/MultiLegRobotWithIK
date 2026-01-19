@@ -149,13 +149,10 @@ public:
         {
             LegAngles la;
             la.valid = true;
-            // la.coxa = degToRad(0);
-            // la.femur = degToRad(100);
-            // la.tibia = degToRad(90 - legIndex * (14.0 - legIndex));
 
             la.coxa = degToRad(0);
-            la.femur = degToRad(0);
-            la.tibia = degToRad(0);
+            la.femur = degToRad(90.24);
+            la.tibia = degToRad(90 - legIndex * 7.3);
 
             results[legIndex] = la;
         }
