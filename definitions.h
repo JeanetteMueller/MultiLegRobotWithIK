@@ -10,7 +10,7 @@
 bool debug = false;
 
 #define LED_PIN 23
-#define NUM_LEDS 2
+#define NUM_LEDS 21
 #define LED_TYPE WS2812B
 #define COLOR_ORDER GRB
 

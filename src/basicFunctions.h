@@ -46,8 +46,6 @@ void printLegAngles(const LegAngles &angles, int legIndex)
     }
 }
 
-
-
 double getAngleFromVector(double x, double y)
 {
     double a = abs(x);

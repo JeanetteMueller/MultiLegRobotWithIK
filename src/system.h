@@ -17,12 +17,14 @@
 #include <FastLED.h>
 
 
+
 #include "basicFunctions.h"
 
 #include "../definitions.h"
-
+#include "leds.h"
 #include "servoFunctions.h"
 #include "input.h"
+
 
 void setup()
 {
@@ -70,20 +72,21 @@ void loop()
 
     if (calibrated == false)
     {
-        leds[0] = CRGB::Red;
-        leds[1] = CRGB::Red;
+        updateAllLed(CRGB::Red);
         FastLED.show();
 
         calibrate();
         calibrated = true;
 
-        leds[0] = CRGB::Green;
+        updateAllLed(CRGB::Green);
         FastLED.show();
     }
 
     if (input->switchLeftInside == Top)
     {
         Serial.println("standby");
+
+        updateAllLed(CRGB::Red);
 
         standby = true;
         preOperationalCount = 0;
@@ -108,6 +111,8 @@ void loop()
     else if (standby == true)
     {
         Serial.println("standby is ending soon");
+
+        updateAllLed(CRGB::Yellow);
 
         if (millis() - previousStepMillis >= 700)
         {
@@ -184,14 +189,14 @@ void loop()
         if (robot->isValidPose())
         {
             // Serial.println("leg angles good");
-            leds[1] = CRGB::Blue;
+            performRainbow();
 
             moveAllLegs(allAngles);
         }
         else
         {
             // Serial.println("leg angles not reachable!!! ");
-            // leds[1] = CRGB::Red;
+            updateAllLed(CRGB::Red);
 
             // // robot->setWalkDirection(0, 0);
 
