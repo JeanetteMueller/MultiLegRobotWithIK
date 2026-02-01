@@ -98,7 +98,8 @@ void loopInput()
 
     input->failsafe = IBus->isFailsafe();
 
-    if (input->failsafe) {
+    if (input->failsafe)
+    {
         setDefaultValues();
     }
 
@@ -145,7 +146,8 @@ void loopInput()
         Serial.println(input->switchRightOutside);
     }
 
-    if (input->failsafe) {
+    if (input->failsafe)
+    {
         // Serial.print(" -- is failsafe: ");
         // Serial.println(input->failsafe ? "true" : "false");
     }

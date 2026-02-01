@@ -94,8 +94,8 @@ void calibrate()
 
 void moveOneLeg(uint8_t legIndex, LegAngles angles, bool finalize)
 {
-  Serial.print("moveOneLeg: ");
-  Serial.println(legIndex);
+  // Serial.print("moveOneLeg: ");
+  // Serial.println(legIndex);
 
   LegAngles calibration = extraCalibrations[legIndex];
 

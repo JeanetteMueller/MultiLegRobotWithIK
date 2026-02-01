@@ -16,15 +16,11 @@
 #include "classes/RobotWithKinematics.h"
 #include <FastLED.h>
 
-
-
 #include "basicFunctions.h"
-
 #include "../definitions.h"
-#include "leds.h"
 #include "servoFunctions.h"
 #include "input.h"
-
+#include "leds.h"
 
 void setup()
 {
@@ -33,8 +29,7 @@ void setup()
 
     Serial1.begin(1000000, SERIAL_8N1, 18, 19);
 
-    FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS);
-    FastLED.setBrightness(50);
+    setup_leds();
 
     st.pSerial = &Serial1;
     while (!Serial1)
@@ -174,9 +169,12 @@ void loop()
         float walkY = fmap(input->rightStickHorizontal, -100, 100, -maxStepWidth, maxStepWidth);
 
         float rotateBody = 0;
-        if (input->switchLeftOutside == Top) {
+        if (input->switchLeftOutside == Top)
+        {
             rotateBody = maxRotationBodyOnPoint;
-        }else if (input->switchLeftOutside == Bottom) {
+        }
+        else if (input->switchLeftOutside == Bottom)
+        {
             rotateBody = -maxRotationBodyOnPoint;
         }
 
@@ -189,27 +187,19 @@ void loop()
         if (robot->isValidPose())
         {
             // Serial.println("leg angles good");
-            performRainbow();
+
+            loop_leds();
 
             moveAllLegs(allAngles);
         }
         else
         {
             // Serial.println("leg angles not reachable!!! ");
+
             updateAllLed(CRGB::Red);
-
-            // // robot->setWalkDirection(0, 0);
-
-            // robot->resetTargetPositions();
-
-            // allAngles = robot->calculateAllLegAngles();
-
-            // if (robot->isValidPose())
-            // {
-            //     moveAllLegs(allAngles);
-            // }
         }
     }
+
     FastLED.show();
     // delay(1);
 }
