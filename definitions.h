@@ -33,7 +33,7 @@ bool calibrated = false;
 
 RobotWithKinematics *robot;
 
-#include "../extraCalibrations.h";
+#include "../extraCalibrations.h"
 
 float bodyCenterToLegsCircleRadius = 104.175; // mm
 float coxaLength = 54.0;                      // mm
@@ -44,7 +44,7 @@ float startLegExtend = 150.0;                 // mm
 
 float maxTilt = 20.0;
 float maxRotation = 25.0;
-float maxStepWidth = 80.0;
+float maxStepWidth = 70.0;
 
 float minHeight = 35.0;                            // mm
 float maxHeight = thighLength + shinLength - 15.0; // mm
@@ -53,3 +53,7 @@ float minLegExtend = 0.0;   // mm
 float maxLegExtend = 190.0; // mm
 
 float maxRotationBodyOnPoint = 70.0; // mm
+
+
+float waveLegA = 0;
+bool waveLegADirection = true;

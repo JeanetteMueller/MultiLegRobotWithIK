@@ -34,7 +34,8 @@ public:
     std::array<Vector3, MAX_NUM_LEGS> lastTargetPosition;
     std::array<Vector3, MAX_NUM_LEGS> targetPosition;
 
-    uint8_t currentMovingLeg = 0;
+    uint8_t currentMovingLegA = 0;
+    uint8_t currentMovingLegB = 0;
     int8_t walkingStep = -1; // Zwischenschritt Nummer des aktuellen Bewegungsablauf
 
 private:
@@ -99,16 +100,16 @@ public:
     {
         if (millis() - previousStepMillis >= 12)
         {
-            if (currentMovingLeg == 0 &&
-                walkingStep == 0 &&
-                (walk_x < 5 && walk_x > -5) &&
-                (walk_y < 5 && walk_y > -5) &&
-                (rotate_Body < 5 && rotate_Body > -5) &&
-                allMovesDone == true)
-            {
-                // Serial.println("NO MOVEMENT AT ALL");
-                return;
-            }
+            // if (currentMovingLegA == 0 &&
+            //     walkingStep == 0 &&
+            //     (walk_x < 5 && walk_x > -5) &&
+            //     (walk_y < 5 && walk_y > -5) &&
+            //     (rotate_Body < 5 && rotate_Body > -5) &&
+            //     allMovesDone == true)
+            // {
+            //     // Serial.println("NO MOVEMENT AT ALL");
+            //     return;
+            // }
 
             previousStepMillis = millis();
 
@@ -120,21 +121,28 @@ public:
 
                 lastTargetPosition = targetPosition;
 
-                currentMovingLeg += 2;
+                currentMovingLegA += 2;
+                currentMovingLegB = currentMovingLegA + 3;
 
-                if (currentMovingLeg >= NUM_LEGS)
+                if (currentMovingLegA >= NUM_LEGS)
                 {
-                    currentMovingLeg = currentMovingLeg - NUM_LEGS;
+                    currentMovingLegA = currentMovingLegA - NUM_LEGS;
+                }
+
+                if (currentMovingLegB >= NUM_LEGS)
+                {
+                    currentMovingLegB = currentMovingLegB - NUM_LEGS;
                 }
             }
 
-            Serial.print("currentMovingLeg: ");
-            Serial.print(currentMovingLeg);
+            /**
+            Serial.print("currentMovingLegA: ");
+            Serial.print(currentMovingLegA);
+            Serial.print("  currentMovingLegB: ");
+            Serial.print(currentMovingLegB);
             Serial.print("  step: ");
-            Serial.print(walkingStep);
-
-            Serial.print("  allMovesDone: ");
-            Serial.println(allMovesDone);
+            Serial.println(walkingStep);
+             */
         }
     }
 
@@ -205,14 +213,9 @@ public:
             {
                 newTarget = baseFootPositions[legIndex];
 
-                if (legIndex == currentMovingLeg)
+                if (legIndex == currentMovingLegA || legIndex == currentMovingLegB)
                 {
                     targetPosition[legIndex] = getStepTargetPosition(legIndex, newTarget);
-                }
-
-                if (currentMovingLeg == 0 && walkingStep == 0)
-                {
-                    allMovesDone = true;
                 }
             }
             else
@@ -229,7 +232,7 @@ public:
      */
     void setBaseFootExtend(float newValue)
     {
-        if (currentMovingLeg == 0 && walkingStep == 0)
+        if (currentMovingLegA == 0 && walkingStep == 0)
         {
             if (baseFootExtend != newValue)
             {
@@ -247,7 +250,6 @@ public:
                 }
 
                 baseFootExtend = newValue;
-                allMovesDone = false;
             }
         }
     }
@@ -274,7 +276,7 @@ public:
      */
     void setWalkDirection(float x, float y, float r)
     {
-        if (currentMovingLeg == 0 && walkingStep == 0)
+        if (currentMovingLegA == 0 && walkingStep == 0)
         {
             // andere richtung und geschwindigkeit immer nur wenn alle Füße am Boden sind
             if (walk_x != x || walk_y != y || rotate_Body != r)
@@ -282,8 +284,6 @@ public:
                 walk_x = x;
                 walk_y = y;
                 rotate_Body = r;
-
-                allMovesDone = false;
             }
         }
     }
@@ -584,6 +584,8 @@ private:
         float y = walk_y;
         float r = rotate_Body;
 
+
+
         Vector3 walkVector = Vector3(x, 0, y);
         Vector3 newTarget = origin;
         float rotation = rotateCoordinatesByLeg[legIndex];
@@ -595,17 +597,17 @@ private:
         rotated = modifyVectorToRotateOnPosition(legIndex, rotated, r);
 
         float numberOfLegs = static_cast<float>(NUM_LEGS);
-        if (currentMovingLeg == legIndex)
+        if (currentMovingLegA == legIndex || currentMovingLegB == legIndex)
         {
             // Gesamtbewegung durch 5 mal 4 da ein Bein Schreitet während andere nur schieben
-            newTarget.x -= rotated.x / numberOfLegs * (numberOfLegs - 1);
-            newTarget.z -= rotated.z / numberOfLegs * (numberOfLegs - 1);
+            newTarget.x -= rotated.x / numberOfLegs * (numberOfLegs - 2);
+            newTarget.z -= rotated.z / numberOfLegs * (numberOfLegs - 2);
         }
         else
         {
             // Gesamtbewegung durch die Anzahl der Beine
-            newTarget.x += rotated.x / numberOfLegs;
-            newTarget.z += rotated.z / numberOfLegs;
+            newTarget.x += rotated.x * 2 / (numberOfLegs - 0);
+            newTarget.z += rotated.z * 2 / (numberOfLegs - 0);
         }
         return newTarget;
     }
@@ -641,7 +643,7 @@ private:
         {
             float curveMultiplier = 0.0;
 
-            if (currentMovingLeg == legIndex)
+            if (currentMovingLegA == legIndex || currentMovingLegB == legIndex)
             {
                 curveMultiplier = 1.1;
             }

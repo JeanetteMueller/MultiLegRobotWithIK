@@ -122,5 +122,4 @@ void moveAllLegs(std::array<LegAngles, RobotWithKinematics::MAX_NUM_LEGS> allAng
     LegAngles angles = allAngles[legIndex];
     moveOneLeg(legIndex, angles, false);
   }
-  finalizeServoPositions();
 }
