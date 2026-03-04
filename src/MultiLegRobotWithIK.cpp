@@ -7,6 +7,6 @@
  * Datum: 2025
  */
 
-#include "src/system.h"
+#include "system.h"
 
 // #include "src/system_test.h"

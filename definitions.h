@@ -33,7 +33,7 @@ bool calibrated = false;
 
 RobotWithKinematics *robot;
 
-#include "extraCalibrations.h";
+#include "../extraCalibrations.h";
 
 float bodyCenterToLegsCircleRadius = 104.175; // mm
 float coxaLength = 54.0;                      // mm

@@ -7,7 +7,7 @@
  * Datum: 2025
  */
 
- #ifndef Vector3_h
+#ifndef Vector3_h
 #define Vector3_h
 
 // 3D Vektor Struktur für Position und Richtung
