@@ -1,5 +1,5 @@
 
-static uint8_t program = 2;
+static uint8_t program = 3;
 static uint8_t programCount = 6;
 long long lastTimeJump = 0;
 PositionSwitch lastRightSwitchPosition = Middle;
@@ -149,7 +149,7 @@ bool performRotatingColor(CRGB color)
 
 void loop_leds()
 {
-    checkRightSwitchState();
+    //checkRightSwitchState();
 
     switch (program)
     {

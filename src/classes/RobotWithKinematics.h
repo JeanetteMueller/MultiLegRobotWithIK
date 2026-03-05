@@ -98,7 +98,7 @@ public:
      */
     void mainLoop()
     {
-        if (millis() - previousStepMillis >= 12)
+        if (millis() - previousStepMillis >= 8)
         {
             // if (currentMovingLegA == 0 &&
             //     walkingStep == 0 &&
@@ -121,8 +121,8 @@ public:
 
                 lastTargetPosition = targetPosition;
 
-                currentMovingLegA += 2;
-                currentMovingLegB = currentMovingLegA + 3;
+                currentMovingLegA += 2; // 1
+                currentMovingLegB = currentMovingLegA;// + 2;
 
                 if (currentMovingLegA >= NUM_LEGS)
                 {
@@ -213,10 +213,7 @@ public:
             {
                 newTarget = baseFootPositions[legIndex];
 
-                if (legIndex == currentMovingLegA || legIndex == currentMovingLegB)
-                {
-                    targetPosition[legIndex] = getStepTargetPosition(legIndex, newTarget);
-                }
+                targetPosition[legIndex] = getStepTargetPosition(legIndex, newTarget);
             }
             else
             {
@@ -578,61 +575,65 @@ private:
 
     Vector3 newTargetPosition(uint8_t legIndex) const
     {
-        Vector3 origin = lastTargetPosition[legIndex];
-
         float x = walk_x;
         float y = walk_y;
         float r = rotate_Body;
 
-
-
         Vector3 walkVector = Vector3(x, 0, y);
-        Vector3 newTarget = origin;
         float rotation = rotateCoordinatesByLeg[legIndex];
         Vector3 rotated = walkVector.rotate(degToRad(rotation));
-
         rotated.x = -rotated.x;
-
-        // spezielle seitliche anpassung für die rotation des ganzen körpers auf der stelle
         rotated = modifyVectorToRotateOnPosition(legIndex, rotated, r);
 
-        float numberOfLegs = static_cast<float>(NUM_LEGS);
-        if (currentMovingLegA == legIndex || currentMovingLegB == legIndex)
+        Vector3 newTarget = lastTargetPosition[legIndex];
+
+        if (currentMovingLegA != currentMovingLegB)
         {
-            // Gesamtbewegung durch 5 mal 4 da ein Bein Schreitet während andere nur schieben
-            newTarget.x -= rotated.x / numberOfLegs * (numberOfLegs - 2);
-            newTarget.z -= rotated.z / numberOfLegs * (numberOfLegs - 2);
+            // Lösung mit 2 beinen in der Luft
+            if (currentMovingLegA == legIndex || currentMovingLegB == legIndex)
+            {
+                // Schritt-Bein: greift voraus in Laufrichtung
+                newTarget.x -= rotated.x * 0.5;
+                newTarget.z -= rotated.z * 0.5;
+            }
+            else
+            {
+                // Steh-Bein: 2/3 vom Schritt, entgegengesetzte Richtung
+                newTarget.x += rotated.x / 3.0;
+                newTarget.z += rotated.z / 3.0;
+            }
         }
         else
         {
-            // Gesamtbewegung durch die Anzahl der Beine
-            newTarget.x += rotated.x * 2 / (numberOfLegs - 0);
-            newTarget.z += rotated.z * 2 / (numberOfLegs - 0);
+            // Lösung mit nur einem Bein in der Luft
+
+            float numberOfLegs = static_cast<float>(NUM_LEGS);
+
+            if (currentMovingLegA == legIndex || currentMovingLegB == legIndex)
+            {
+                // Gesamtbewegung durch 5 mal 4 da ein Bein Schreitet während andere nur schieben
+                newTarget.x -= rotated.x / numberOfLegs * (numberOfLegs - 1);
+                newTarget.z -= rotated.z / numberOfLegs * (numberOfLegs - 1);
+            }
+            else
+            {
+                // Gesamtbewegung durch die Anzahl der Beine
+                newTarget.x += rotated.x / numberOfLegs;
+                newTarget.z += rotated.z / numberOfLegs;
+            }
         }
+
         return newTarget;
     }
+
     Vector3 modifyVectorToRotateOnPosition(uint8_t legIndex, Vector3 vector, float rotation) const
     {
-        if (legIndex == 0)
-        {
-            vector.z += rotation;
-        }
-        else if (legIndex == 1)
-        {
-            vector.x -= rotation;
-        }
-        else if (legIndex == 2)
-        {
-            vector.z -= rotation;
-        }
-        else if (legIndex == 3)
-        {
-            vector.z -= rotation;
-        }
-        else if (legIndex == 4)
-        {
-            vector.x += rotation;
-        }
+        float angle = m_legBaseAngles[legIndex];
+
+        // Tangentiale Richtung am Kreis
+        vector.x += rotation * (-sinf(angle));
+        vector.z += rotation * cosf(angle);
+
         return vector;
     }
 
@@ -645,7 +646,7 @@ private:
 
             if (currentMovingLegA == legIndex || currentMovingLegB == legIndex)
             {
-                curveMultiplier = 1.1;
+                curveMultiplier = 1.0;
             }
 
             return interpolateSin(origin, newTarget, walkingStep, curveMultiplier);
