@@ -23,9 +23,6 @@
 #include "leds.h"
 
 uint32_t previousStepMillis = 0;
-int8_t standByLeg = 0;
-bool standby = false;
-uint8_t preOperationalCount = 0;
 
 void setup()
 {
@@ -51,7 +48,7 @@ void setup()
                                     shinLength,                   // shin length in mm
                                     startLegExtend,               // base food extend in mm
                                     maxStepWidth                  // max step in mm
-                                );
+    );
 
     robot->setPose(startBodyHeightOverGround, 0.0, 0.0, 0.0);
 
@@ -62,62 +59,6 @@ void setup()
     delay(200);
     loopInput();
     delay(500);
-}
-
-void legsInStandby()
-{
-    updateAllLed(CRGB::Red);
-
-    standby = true;
-    preOperationalCount = 0;
-
-    if (millis() - previousStepMillis >= 700)
-    {
-        previousStepMillis = millis();
-
-        std::array<LegAngles, RobotWithKinematics::MAX_NUM_LEGS> standByAngles = robot->standBy();
-
-        LegAngles angles = standByAngles[standByLeg];
-        moveOneLeg(standByLeg, angles, true);
-
-        standByLeg++;
-
-        if (standByLeg > robot->NUM_LEGS - 1)
-        {
-            standByLeg = 0;
-        }
-    }
-}
-
-void extendLegsFromStandby()
-{
-    updateAllLed(CRGB::Yellow);
-
-    if (millis() - previousStepMillis >= 700)
-    {
-        previousStepMillis = millis();
-
-        if (preOperationalCount == 0)
-        {
-            standByLeg = robot->NUM_LEGS - 1;
-        }
-
-        if (standByLeg >= 0)
-        {
-            std::array<LegAngles, RobotWithKinematics::MAX_NUM_LEGS> standByAngles = robot->preOperationPositions();
-
-            LegAngles angles = standByAngles[standByLeg];
-            moveOneLeg(standByLeg, angles, true);
-
-            preOperationalCount++;
-        }
-        standByLeg--;
-
-        if (standByLeg < -2)
-        {
-            standby = false;
-        }
-    }
 }
 
 void waveWithLeg()
@@ -174,45 +115,47 @@ void loop()
         FastLED.show();
     }
 
-    if (input->switchLeftInside == Top)
+    previousStepMillis = 0;
+    float legExtend = 0;
+
+    if (input->switchRightInside == Top)
     {
-        Serial.println("standby");
-        legsInStandby();
+        legExtend = 170;
     }
-    else if (standby == true)
+    else if (input->switchRightInside == Middle)
     {
-        Serial.println("standby is ending soon");
-        extendLegsFromStandby();
+        legExtend = 130;
+    }
+    else if (input->switchRightInside == Bottom)
+    {
+        legExtend = 100;
+    }
+
+    // float legExtend = fmap(input->rightPoti, 0.0, 1000.0, minLegExtend, maxLegExtend);
+
+    float height = fmap(input->leftPoit, 0.0, 1000.0, minHeight, maxHeight);
+    float tiltY = fmap(input->leftStickVertical, -100.0, 100.0, maxTilt, -maxTilt);
+    float tiltX = fmap(input->leftStickHorizontal, 100.0, -100.0, maxTilt, -maxTilt);
+    float rotateTorso = fmap(input->rightPoti, 0.0, 1000.0, -maxRotation, maxRotation);
+
+    bool vehicleSteering = input->switchLeftInside == Top;
+
+    float walkX = 0;
+    float walkY = 0;
+    float rotateBody = 0;
+
+    if (vehicleSteering)
+    {
+        // Fahrzeug-Modus: Y = Geschwindigkeit, X = Lenkung
+        walkX = fmap(input->rightStickVertical, -100.0, 100.0, -maxStepWidth, maxStepWidth);
+        rotateBody = fmap(input->rightStickHorizontal, -100.0, 100.0, -maxRotationBodyOnPoint, maxRotationBodyOnPoint);
     }
     else
     {
-        previousStepMillis = 0;
-        float legExtend = 0;
+        // Strafing-Modus: direktionale Bewegung
+        walkX = fmap(input->rightStickVertical, -100.0, 100.0, -maxStepWidth, maxStepWidth);
+        walkY = fmap(input->rightStickHorizontal, -100.0, 100.0, -maxStepWidth, maxStepWidth);
 
-        if (input->switchRightInside == 0)
-        {
-            legExtend = 170;
-        }
-        else if (input->switchRightInside == 1)
-        {
-            legExtend = 130;
-        }
-        else if (input->switchRightInside == 2)
-        {
-            legExtend = 100;
-        }
-
-        // float legExtend = fmap(input->rightPoti, 0.0, 1000.0, minLegExtend, maxLegExtend);
-
-        float height = fmap(input->leftPoit, 0.0, 1000.0, minHeight, maxHeight);
-        float tiltY = fmap(input->leftStickVertical, -100.0, 100.0, maxTilt, -maxTilt);
-        float tiltX = fmap(input->leftStickHorizontal, 100.0, -100.0, maxTilt, -maxTilt);
-        float rotateTorso = fmap(input->rightPoti, 0.0, 1000.0, -maxRotation, maxRotation);
-
-        float walkX = fmap(input->rightStickVertical, -100.0, 100.0, -maxStepWidth, maxStepWidth);
-        float walkY = fmap(input->rightStickHorizontal, -100.0, 100.0, -maxStepWidth, maxStepWidth);
-
-        float rotateBody = 0;
         if (input->switchLeftOutside == Top)
         {
             rotateBody = maxRotationBodyOnPoint;
@@ -221,39 +164,39 @@ void loop()
         {
             rotateBody = -maxRotationBodyOnPoint;
         }
+    }
 
-        robot->setWalkDirection(walkX, walkY, rotateBody);
-        robot->setBaseFootExtend(legExtend);
-        robot->setPose(height, tiltX, tiltY, rotateTorso);
-        robot->setStepSmoothness(1.0);
+    robot->setWalkDirection(walkX, walkY, rotateBody);
+    robot->setBaseFootExtend(legExtend);
+    robot->setPose(height, tiltX, tiltY, rotateTorso);
+    robot->setStepSmoothness(1.0);
 
-        robot->mainLoop();
+    robot->mainLoop();
 
-        robot->prepareTargetPositions();
+    robot->prepareTargetPositions();
 
-        std::array<LegAngles, RobotWithKinematics::MAX_NUM_LEGS> allAngles = robot->calculateAllLegAngles();
+    std::array<LegAngles, RobotWithKinematics::MAX_NUM_LEGS> allAngles = robot->calculateAllLegAngles();
 
-        if (robot->isValidPose())
+    if (robot->isValidPose())
+    {
+        // Serial.println("leg angles good");
+
+        loop_leds();
+
+        moveAllLegs(allAngles);
+
+        if (walkX < 1.0 && walkX > -1.0 && walkY < 1.0 && walkY > -1.0 && rotateBody == 0 && height > (minHeight + (maxHeight - minHeight) / 2))
         {
-            // Serial.println("leg angles good");
-
-            loop_leds();
-
-            moveAllLegs(allAngles);
-
-            if (walkX < 1.0 && walkX > -1.0 && walkY < 1.0 && walkY > -1.0 && rotateBody == 0 && height > (minHeight + (maxHeight - minHeight) / 2))
-            {
-                waveWithLeg();
-            }
-
-            finalizeServoPositions();
+            waveWithLeg();
         }
-        else
-        {
-            // Serial.println("leg angles not reachable!!! ");
 
-            updateAllLed(CRGB::Red);
-        }
+        finalizeServoPositions();
+    }
+    else
+    {
+        // Serial.println("leg angles not reachable!!! ");
+
+        updateAllLed(CRGB::Red);
     }
 
     FastLED.show();
