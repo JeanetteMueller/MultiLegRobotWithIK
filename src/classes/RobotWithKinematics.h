@@ -47,13 +47,15 @@ private:
     const float COXA_LENGTH;  // Länge der Coxa (L0)
     const float FEMUR_LENGTH; // Länge des Oberschenkels (L1)
     const float TIBIA_LENGTH; // Länge des Unterschenkels (L2)
+    float newBaseFootExtend;
     float baseFootExtend;
-
-    bool allMovesDone = true;
 
     float walk_x = 0;
     float walk_y = 0;
     float rotate_Body = 0;
+
+    uint8_t currentPhase = 0;
+    static constexpr uint8_t PHASES_PER_CYCLE = 10;
 
     BodyPose m_pose;
 
@@ -98,18 +100,19 @@ public:
      */
     void mainLoop()
     {
-        if (millis() - previousStepMillis >= 8)
+        if (millis() - previousStepMillis >= 8 + 10)
         {
-            // if (currentMovingLegA == 0 &&
-            //     walkingStep == 0 &&
-            //     (walk_x < 5 && walk_x > -5) &&
-            //     (walk_y < 5 && walk_y > -5) &&
-            //     (rotate_Body < 5 && rotate_Body > -5) &&
-            //     allMovesDone == true)
-            // {
-            //     // Serial.println("NO MOVEMENT AT ALL");
-            //     return;
-            // }
+            if (currentPhase == 0 &&
+                walkingStep == 0 &&
+                (walk_x < 15 && walk_x > -15) &&
+                (walk_y < 15 && walk_y > -15) &&
+                (rotate_Body < 5 && rotate_Body > -5) &&
+                newBaseFootExtend == baseFootExtend
+            )
+            {
+                // Serial.println("NO MOVEMENT AT ALL");
+                return;
+            }
 
             previousStepMillis = millis();
 
@@ -118,20 +121,25 @@ public:
             if (walkingStep >= WALKING_STEP_COUNT)
             {
                 walkingStep = 0;
-
                 lastTargetPosition = targetPosition;
 
-                currentMovingLegA += 2; // 1
-                currentMovingLegB = currentMovingLegA;// + 2;
+                currentPhase++;
+
+                if (currentPhase >= PHASES_PER_CYCLE)
+                {
+                    currentPhase = 0;
+                }
+
+                currentMovingLegA += 1;
+                currentMovingLegB = currentMovingLegA + 3;
 
                 if (currentMovingLegA >= NUM_LEGS)
                 {
-                    currentMovingLegA = currentMovingLegA - NUM_LEGS;
+                    currentMovingLegA -= NUM_LEGS;
                 }
-
                 if (currentMovingLegB >= NUM_LEGS)
                 {
-                    currentMovingLegB = currentMovingLegB - NUM_LEGS;
+                    currentMovingLegB -= NUM_LEGS;
                 }
             }
 
@@ -229,7 +237,9 @@ public:
      */
     void setBaseFootExtend(float newValue)
     {
-        if (currentMovingLegA == 0 && walkingStep == 0)
+        newBaseFootExtend = newValue;
+
+        if (currentPhase == 0 && walkingStep == 0)
         {
             if (baseFootExtend != newValue)
             {
@@ -252,14 +262,6 @@ public:
     }
 
     /**
-     * Setzt die Körper-Pose
-     */
-    void setPose(const BodyPose &pose)
-    {
-        m_pose = pose;
-    }
-
-    /**
      * Setzt die Körper-Pose mit einzelnen Parametern (Winkel in Grad)
      */
     void setPose(float height,
@@ -273,9 +275,8 @@ public:
      */
     void setWalkDirection(float x, float y, float r)
     {
-        if (currentMovingLegA == 0 && walkingStep == 0)
+        if (currentPhase == 0 && walkingStep == 0)
         {
-            // andere richtung und geschwindigkeit immer nur wenn alle Füße am Boden sind
             if (walk_x != x || walk_y != y || rotate_Body != r)
             {
                 walk_x = x;
@@ -590,17 +591,16 @@ private:
         if (currentMovingLegA != currentMovingLegB)
         {
             // Lösung mit 2 beinen in der Luft
+
             if (currentMovingLegA == legIndex || currentMovingLegB == legIndex)
             {
-                // Schritt-Bein: greift voraus in Laufrichtung
-                newTarget.x -= rotated.x * 0.5;
-                newTarget.z -= rotated.z * 0.5;
+                newTarget.x -= rotated.x * 0.25;
+                newTarget.z -= rotated.z * 0.25;
             }
             else
             {
-                // Steh-Bein: 2/3 vom Schritt, entgegengesetzte Richtung
-                newTarget.x += rotated.x / 3.0;
-                newTarget.z += rotated.z / 3.0;
+                newTarget.x += rotated.x / 6.0;
+                newTarget.z += rotated.z / 6.0;
             }
         }
         else
@@ -681,7 +681,7 @@ private:
             float liftLeg = 0;
             if (d > 0)
             {
-                liftLeg = sinCurve(d, walkingStep);
+                liftLeg = sinCurve(d, walkingStep, 0.5);
                 yAddition = (liftLeg * d * curveMultiplier);
 
                 if (yAddition < 10)
@@ -703,7 +703,7 @@ private:
         return sqrtf(dx * dx + dy * dy);
     }
 
-    float sinCurve(float distanz, uint8_t walkingStep) const
+    float sinCurve(float distanz, uint8_t walkingStep, float amplitude) const
     {
         if (walkingStep == 0)
         {
@@ -713,8 +713,6 @@ private:
         {
             return 0;
         }
-
-        float amplitude = 1.0;
         // Position entlang der Distanz (0 bis distanz)
         float position = (distanz / (WALKING_STEP_COUNT - 1)) * walkingStep;
 

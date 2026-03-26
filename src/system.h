@@ -204,16 +204,16 @@ void loop()
         robot->setBaseFootExtend(legExtend);
 
         float height = fmap(input->leftPoit, 0.0, 1000.0, minHeight, maxHeight);
-        float tiltY = fmap(input->leftStickVertical, 100.0, -100.0, maxTilt, -maxTilt);
-        float tiltX = fmap(input->leftStickHorizontal, -100.0, 100.0, maxTilt, -maxTilt);
+        float tiltY = fmap(input->leftStickVertical, -100.0, 100.0, maxTilt, -maxTilt);
+        float tiltX = fmap(input->leftStickHorizontal, 100.0, -100.0, maxTilt, -maxTilt);
         float rotateTorso = fmap(input->rightPoti, 0.0, 1000.0, -maxRotation, maxRotation);
 
         robot->setPose(height, tiltX, tiltY, rotateTorso);
 
         robot->mainLoop();
 
-        float walkX = fmap(input->rightStickVertical, 100, -100, -maxStepWidth, maxStepWidth);
-        float walkY = fmap(input->rightStickHorizontal, 100, -100, -maxStepWidth, maxStepWidth);
+        float walkX = fmap(input->rightStickVertical, -100.0, 100.0, -maxStepWidth, maxStepWidth);
+        float walkY = fmap(input->rightStickHorizontal, -100.0, 100.0, -maxStepWidth, maxStepWidth);
 
         float rotateBody = 0;
         if (input->switchLeftOutside == Top)

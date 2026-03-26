@@ -9,7 +9,7 @@ void setupExtraCalibrations()
         extraCalibrations[i] = LegAngles();
     }
 
-    extraCalibrations[0].coxa = degToRad(-3);
+    extraCalibrations[0].coxa = degToRad(0);
     extraCalibrations[1].coxa = degToRad(0);
     extraCalibrations[2].coxa = degToRad(0);
     extraCalibrations[3].coxa = degToRad(0);
@@ -17,15 +17,15 @@ void setupExtraCalibrations()
 
     // positiv ist hoch
     extraCalibrations[0].femur = degToRad(0);
-    extraCalibrations[1].femur = degToRad(1);
-    extraCalibrations[2].femur = degToRad(-2);
+    extraCalibrations[1].femur = degToRad(0);
+    extraCalibrations[2].femur = degToRad(0);
     extraCalibrations[3].femur = degToRad(0);
-    extraCalibrations[4].femur = degToRad(3);
+    extraCalibrations[4].femur = degToRad(0);
 
     // positiv ist nach außen/hoch
     extraCalibrations[0].tibia = degToRad(0);
     extraCalibrations[1].tibia = degToRad(0);
-    extraCalibrations[2].tibia = degToRad(-7);
-    extraCalibrations[3].tibia = degToRad(-2);
-    extraCalibrations[4].tibia = degToRad(-2);
+    extraCalibrations[2].tibia = degToRad(0);
+    extraCalibrations[3].tibia = degToRad(0);
+    extraCalibrations[4].tibia = degToRad(0);
 }
