@@ -68,33 +68,36 @@ void waveWithLeg()
     if (input->switchRightOutside == Top || input->switchRightOutside == Bottom)
     {
 
+        float maxRotation = 28;
+        float rotationStep = 0.25;
+
         LegAngles la;
         la.valid = true;
         la.coxa = degToRad(waveLegA);
-        la.femur = degToRad(50);
-        la.tibia = degToRad(50);
+        la.femur = degToRad(60);
+        la.tibia = degToRad(-120);
 
         if (waveLegADirection)
         {
-            waveLegA += 0.4;
+            waveLegA += rotationStep;
         }
         else
         {
-            waveLegA -= 0.4;
+            waveLegA -= rotationStep;
         }
 
-        if (waveLegA > 60 || waveLegA < -60)
+        if (waveLegA > maxRotation || waveLegA < -maxRotation)
         {
             waveLegADirection = !waveLegADirection;
         }
 
         if (input->switchRightOutside == Top)
         {
-            moveOneLeg(2, la, false);
+            moveOneLeg(0, la, false);
         }
         else if (input->switchRightOutside == Bottom)
         {
-            moveOneLeg(3, la, false);
+            moveOneLeg(4, la, false);
         }
     }
 }
