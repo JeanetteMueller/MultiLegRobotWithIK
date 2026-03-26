@@ -28,7 +28,7 @@ class RobotWithKinematics
 public:
     uint8_t NUM_LEGS = 5; // Anzahl der Beine
     static constexpr uint8_t MAX_NUM_LEGS = 8;
-    static constexpr uint8_t WALKING_STEP_COUNT = 20; // Anzahl der interpolierten Schritte für Bewegungsabläufe
+    static constexpr uint8_t WALKING_STEP_COUNT = 70; // Anzahl der interpolierten Schritte für Bewegungsabläufe
 
     std::array<Vector3, MAX_NUM_LEGS> baseFootPositions; // Feste Fußpositionen auf dem Boden
     std::array<Vector3, MAX_NUM_LEGS> lastTargetPosition;
@@ -47,15 +47,15 @@ private:
     const float COXA_LENGTH;  // Länge der Coxa (L0)
     const float FEMUR_LENGTH; // Länge des Oberschenkels (L1)
     const float TIBIA_LENGTH; // Länge des Unterschenkels (L2)
-    float newBaseFootExtend;
-    float baseFootExtend;
 
+    float baseFootExtend;
+    float maxStepWidth;
+    float stepSmoothness = 1.0f; // 0.0 = linear, 1.0 = smoother
     float walk_x = 0;
     float walk_y = 0;
     float rotate_Body = 0;
 
     uint8_t currentPhase = 0;
-    static constexpr uint8_t PHASES_PER_CYCLE = 10;
 
     BodyPose m_pose;
 
@@ -72,12 +72,14 @@ public:
         float coxaLength,
         float thighLength,
         float shinLength,
-        float baseFootExtend) : BODY_RADIUS(bodyRadius),
-                                NUM_LEGS(numberOfLegs),
-                                COXA_LENGTH(coxaLength),
-                                FEMUR_LENGTH(thighLength),
-                                TIBIA_LENGTH(shinLength),
-                                baseFootExtend(baseFootExtend)
+        float baseFootExtend,
+        float maxStepWidth) : BODY_RADIUS(bodyRadius),
+                              NUM_LEGS(numberOfLegs),
+                              COXA_LENGTH(coxaLength),
+                              FEMUR_LENGTH(thighLength),
+                              TIBIA_LENGTH(shinLength),
+                              baseFootExtend(baseFootExtend),
+                              maxStepWidth(maxStepWidth)
     {
         float footRadius = BODY_RADIUS + baseFootExtend; // Abstand vom Zentrum
 
@@ -100,15 +102,14 @@ public:
      */
     void mainLoop()
     {
-        if (millis() - previousStepMillis >= 8 + 10)
+        if (millis() - previousStepMillis >= 4)
         {
+            float minSpeed = maxStepWidth / 3;
             if (currentPhase == 0 &&
                 walkingStep == 0 &&
-                (walk_x < 15 && walk_x > -15) &&
-                (walk_y < 15 && walk_y > -15) &&
-                (rotate_Body < 5 && rotate_Body > -5) &&
-                newBaseFootExtend == baseFootExtend
-            )
+                (walk_x < minSpeed && walk_x > -minSpeed) &&
+                (walk_y < minSpeed && walk_y > -minSpeed) &&
+                (rotate_Body < 10 && rotate_Body > -10))
             {
                 // Serial.println("NO MOVEMENT AT ALL");
                 return;
@@ -125,7 +126,7 @@ public:
 
                 currentPhase++;
 
-                if (currentPhase >= PHASES_PER_CYCLE)
+                if (currentPhase >= NUM_LEGS)
                 {
                     currentPhase = 0;
                 }
@@ -215,9 +216,11 @@ public:
         {
             Vector3 newTarget;
 
-            if (walk_x < 5 && walk_x > -5 &&
-                walk_y < 5 && walk_y > -5 &&
-                rotate_Body < 5 && rotate_Body > -5)
+            float minSpeed = maxStepWidth / 3;
+
+            if (walk_x < minSpeed && walk_x > -minSpeed &&
+                walk_y < minSpeed && walk_y > -minSpeed &&
+                rotate_Body < 10 && rotate_Body > -10)
             {
                 newTarget = baseFootPositions[legIndex];
 
@@ -237,28 +240,33 @@ public:
      */
     void setBaseFootExtend(float newValue)
     {
-        newBaseFootExtend = newValue;
-
-        if (currentPhase == 0 && walkingStep == 0)
+        if (currentPhase == 0 && walkingStep == 0 && baseFootExtend != newValue)
         {
-            if (baseFootExtend != newValue)
+            Serial.println("setBaseFootExtend");
+            float footRadius = BODY_RADIUS + newValue; // Abstand vom Zentrum
+
+            for (uint8_t i = 0; i < NUM_LEGS; i++)
             {
-                Serial.println("setBaseFootExtend");
-                float footRadius = BODY_RADIUS + newValue; // Abstand vom Zentrum
+                float angle = i * (2.0 * M_PI / NUM_LEGS);
 
-                for (uint8_t i = 0; i < NUM_LEGS; i++)
-                {
-                    float angle = i * (2.0 * M_PI / NUM_LEGS);
-
-                    baseFootPositions[i] = Vector3(
-                        cosf(angle) * footRadius,
-                        0.0, // Boden
-                        sinf(angle) * footRadius);
-                }
-
-                baseFootExtend = newValue;
+                baseFootPositions[i] = Vector3(
+                    cosf(angle) * footRadius,
+                    0.0, // Boden
+                    sinf(angle) * footRadius);
             }
+
+            baseFootExtend = newValue;
+            walkingStep += 1;
         }
+    }
+
+    /**
+     * Setzt die Stärke des Ease-In/Ease-Out für Schrittbewegungen
+     * 0.0 = linear, 0.5 = Smoothstep, 1.0 = Smootherstep
+     */
+    void setStepSmoothness(float value)
+    {
+        stepSmoothness = fmaxf(0.0f, fminf(1.0f, value));
     }
 
     /**
@@ -666,34 +674,45 @@ private:
             return end;
         }
 
-        // lineare Schritte für x und y
-        const float dx = (end.x - start.x) / (WALKING_STEP_COUNT - 1);
-        const float dy = (end.y - start.y) / (WALKING_STEP_COUNT - 1);
-        const float dz = (end.z - start.z) / (WALKING_STEP_COUNT - 1);
+        // Normalisierter Fortschritt (0.0 bis 1.0)
+        float t = static_cast<float>(walkingStep) / (WALKING_STEP_COUNT - 1);
 
+        // Ease-In/Ease-Out nur für Beine in der Luft
+        // stepSmoothness steuert die Stärke: 0.0 = linear, höher = weicher
+        float tPos = t;
+        if (curveMultiplier > 0 && stepSmoothness > 0)
+        {
+            // Symmetrische Potenz-Kurve: t wird um 0.5 zentriert,
+            // Exponent < 1 → schnell starten/landen wird zu sanft starten/landen
+            float centered = 2.0f * t - 1.0f; // -1 bis +1
+            float sign = (centered >= 0) ? 1.0f : -1.0f;
+            float exponent = 1.0f / (1.0f + stepSmoothness * 6.0f); // 1.0 (linear) bis 0.2 (sehr weich)
+            tPos = 0.5f + 0.5f * sign * powf(fabsf(centered), exponent);
+        }
+
+        // X/Z mit Ease-In/Ease-Out interpolieren
+        float x = start.x + (end.x - start.x) * tPos;
+        float y = start.y + (end.y - start.y) * tPos;
+        float z = start.z + (end.z - start.z) * tPos;
+
+        // Y-Bogen für Beine in der Luft
         float yAddition = 0;
-
         if (curveMultiplier > 0)
         {
-            // abstand zwischen start und ende
             float d = distance(start.x, start.z, end.x, end.z);
-
-            float liftLeg = 0;
             if (d > 0)
             {
-                liftLeg = sinCurve(d, walkingStep, 0.5);
-                yAddition = (liftLeg * d * curveMultiplier);
-
+                // Sinus-Bogen basiert auf linearem t (nicht eased),
+                // damit die Höhe symmetrisch bleibt
+                yAddition = sinf(M_PI * t) * d * 0.5f * curveMultiplier;
                 if (yAddition < 10)
                 {
-                    yAddition = 10.0;
+                    yAddition = 10.0f * sinf(M_PI * t);
                 }
             }
         }
 
-        return Vector3(start.x + dx * walkingStep,
-                       (start.y + dy * walkingStep) + yAddition,
-                       start.z + dz * walkingStep);
+        return Vector3(x, y + yAddition, z);
     }
 
     float distance(float x1, float y1, float x2, float y2) const

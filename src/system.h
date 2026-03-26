@@ -49,7 +49,9 @@ void setup()
                                     coxaLength,                   // coxa length in mm
                                     thighLength,                  // thigh length in mm
                                     shinLength,                   // shin length in mm
-                                    startLegExtend);              // base food extend in mm
+                                    startLegExtend,               // base food extend in mm
+                                    maxStepWidth                  // max step in mm
+                                );
 
     robot->setPose(startBodyHeightOverGround, 0.0, 0.0, 0.0);
 
@@ -120,7 +122,7 @@ void extendLegsFromStandby()
 
 void waveWithLeg()
 {
-    Serial.println("I CAN USE MY HANDY");
+    // Serial.println("I CAN USE MY HANDY");
 
     if (input->switchRightOutside == Top || input->switchRightOutside == Bottom)
     {
@@ -189,28 +191,23 @@ void loop()
 
         if (input->switchRightInside == 0)
         {
-            legExtend = 190;
+            legExtend = 170;
         }
         else if (input->switchRightInside == 1)
         {
-            legExtend = 120;
+            legExtend = 130;
         }
         else if (input->switchRightInside == 2)
         {
-            legExtend = 70;
+            legExtend = 100;
         }
 
         // float legExtend = fmap(input->rightPoti, 0.0, 1000.0, minLegExtend, maxLegExtend);
-        robot->setBaseFootExtend(legExtend);
 
         float height = fmap(input->leftPoit, 0.0, 1000.0, minHeight, maxHeight);
         float tiltY = fmap(input->leftStickVertical, -100.0, 100.0, maxTilt, -maxTilt);
         float tiltX = fmap(input->leftStickHorizontal, 100.0, -100.0, maxTilt, -maxTilt);
         float rotateTorso = fmap(input->rightPoti, 0.0, 1000.0, -maxRotation, maxRotation);
-
-        robot->setPose(height, tiltX, tiltY, rotateTorso);
-
-        robot->mainLoop();
 
         float walkX = fmap(input->rightStickVertical, -100.0, 100.0, -maxStepWidth, maxStepWidth);
         float walkY = fmap(input->rightStickHorizontal, -100.0, 100.0, -maxStepWidth, maxStepWidth);
@@ -226,6 +223,11 @@ void loop()
         }
 
         robot->setWalkDirection(walkX, walkY, rotateBody);
+        robot->setBaseFootExtend(legExtend);
+        robot->setPose(height, tiltX, tiltY, rotateTorso);
+        robot->setStepSmoothness(1.0);
+
+        robot->mainLoop();
 
         robot->prepareTargetPositions();
 

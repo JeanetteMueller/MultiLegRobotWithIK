@@ -52,7 +52,7 @@ float maxHeight = thighLength + shinLength - 15.0; // mm
 float minLegExtend = 0.0;   // mm
 float maxLegExtend = 190.0; // mm
 
-float maxRotationBodyOnPoint = 80.0 + 50.0; // mm
+float maxRotationBodyOnPoint = 200.0; // mm
 
 
 float waveLegA = 0;
