@@ -93,11 +93,11 @@ void waveWithLeg()
 
         if (input->switchRightOutside == Top)
         {
-            moveOneLeg(0, la, false);
+            moveOneLeg(2, la, false);
         }
         else if (input->switchRightOutside == Bottom)
         {
-            moveOneLeg(4, la, false);
+            moveOneLeg(3, la, false);
         }
     }
 }
@@ -119,22 +119,7 @@ void loop()
     }
 
     previousStepMillis = 0;
-    float legExtend = 0;
-
-    if (input->switchRightInside == Top)
-    {
-        legExtend = 170;
-    }
-    else if (input->switchRightInside == Middle)
-    {
-        legExtend = 130;
-    }
-    else if (input->switchRightInside == Bottom)
-    {
-        legExtend = 100;
-    }
-
-    // float legExtend = fmap(input->rightPoti, 0.0, 1000.0, minLegExtend, maxLegExtend);
+    float legExtend = 170;
 
     float height = fmap(input->leftPoit, 0.0, 1000.0, minHeight, maxHeight);
     float tiltY = fmap(input->leftStickVertical, -100.0, 100.0, maxTilt, -maxTilt);
@@ -150,23 +135,23 @@ void loop()
     if (vehicleSteering)
     {
         // Fahrzeug-Modus: Y = Geschwindigkeit, X = Lenkung
-        walkX = fmap(input->rightStickVertical, -100.0, 100.0, -maxStepWidth, maxStepWidth);
+        walkX = fmap(input->rightStickVertical, -100.0, 100.0, maxStepWidth, -maxStepWidth);
         rotateBody = fmap(input->rightStickHorizontal, -100.0, 100.0, -maxRotationBodyOnPoint, maxRotationBodyOnPoint);
     }
     else
     {
         // Strafing-Modus: direktionale Bewegung
-        walkX = fmap(input->rightStickVertical, -100.0, 100.0, -maxStepWidth, maxStepWidth);
-        walkY = fmap(input->rightStickHorizontal, -100.0, 100.0, -maxStepWidth, maxStepWidth);
+        walkX = fmap(input->rightStickVertical, -100.0, 100.0, maxStepWidth, -maxStepWidth);
+        walkY = fmap(input->rightStickHorizontal, -100.0, 100.0, maxStepWidth, -maxStepWidth);
+    }
 
-        if (input->switchLeftOutside == Top)
-        {
-            rotateBody = maxRotationBodyOnPoint;
-        }
-        else if (input->switchLeftOutside == Bottom)
-        {
-            rotateBody = -maxRotationBodyOnPoint;
-        }
+    if (input->switchLeftOutside == Top)
+    {
+        robot->doSpecialPose(0);
+    }
+    else if (input->switchLeftOutside == Bottom)
+    {
+        robot->doSpecialPose(1);
     }
 
     robot->setWalkDirection(walkX, walkY, rotateBody);
@@ -177,6 +162,9 @@ void loop()
     robot->mainLoop();
 
     robot->prepareTargetPositions();
+
+    // Sonderpose-State-Machine: schreibt ggf. targetPosition[] für die beteiligten Beine
+    robot->specialPoseLoop();
 
     std::array<LegAngles, RobotWithKinematics::MAX_NUM_LEGS> allAngles = robot->calculateAllLegAngles();
 

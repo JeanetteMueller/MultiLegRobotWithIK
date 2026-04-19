@@ -33,7 +33,7 @@ struct LegAngles
         float lift = femurDeg();
         float knee = tibiaDeg();
 
-        float limit_swing = 60;
+        float limit_swing = 65;
         float limit_lift = 130;
         float limit_knee = 180-40;
 
