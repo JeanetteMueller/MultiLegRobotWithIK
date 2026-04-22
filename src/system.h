@@ -14,13 +14,12 @@
 #include "classes/Vector3.h"
 
 #include "classes/RobotWithKinematics.h"
-#include <FastLED.h>
 
 #include "basicFunctions.h"
 #include "../definitions.h"
 #include "servoFunctions.h"
 #include "input.h"
-#include "leds.h"
+#include "footSensors.h"
 
 uint32_t previousStepMillis = 0;
 
@@ -30,8 +29,6 @@ void setup()
     Serial.println("SETUP");
 
     Serial1.begin(1000000, SERIAL_8N1, 18, 19);
-
-    setup_leds();
 
     st.pSerial = &Serial1;
     while (!Serial1)
@@ -54,6 +51,8 @@ void setup()
 
     setupInput();
 
+    setupFootSensors();
+
     initServoPositions();
 
     delay(200);
@@ -69,7 +68,7 @@ void waveWithLeg()
     {
 
         float maxRotation = 28;
-        float rotationStep = 0.25;
+        float rotationStep = 0.3;
 
         LegAngles la;
         la.valid = true;
@@ -106,16 +105,12 @@ void loop()
 {
     loopInput();
 
+    loopFootSensors();
+
     if (calibrated == false)
     {
-        updateAllLed(CRGB::Red);
-        FastLED.show();
-
         calibrate();
         calibrated = true;
-
-        updateAllLed(CRGB::Green);
-        FastLED.show();
     }
 
     previousStepMillis = 0;
@@ -161,6 +156,11 @@ void loop()
 
     robot->mainLoop();
 
+    // Serial.print("height: ");
+    // Serial.print(height);
+
+    // Serial.println();
+
     robot->prepareTargetPositions();
 
     // Sonderpose-State-Machine: schreibt ggf. targetPosition[] für die beteiligten Beine
@@ -171,8 +171,6 @@ void loop()
     if (robot->isValidPose())
     {
         // Serial.println("leg angles good");
-
-        loop_leds();
 
         moveAllLegs(allAngles);
 
@@ -187,9 +185,8 @@ void loop()
     {
         // Serial.println("leg angles not reachable!!! ");
 
-        updateAllLed(CRGB::Red);
+        
     }
 
-    FastLED.show();
     // delay(1);
 }

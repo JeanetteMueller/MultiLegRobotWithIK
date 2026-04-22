@@ -9,13 +9,6 @@
 
 bool debug = false;
 
-#define LED_PIN 23
-#define NUM_LEDS 21
-#define LED_TYPE WS2812B
-#define COLOR_ORDER GRB
-
-CRGB leds[NUM_LEDS];
-
 SMS_STS st;
 
 #define NUMBER_OF_LEGS 5
@@ -47,7 +40,7 @@ float maxRotation = 25.0;
 float maxStepWidth = 220.0;
 
 float minHeight = 170.0; // mm
-float maxHeight = 300.0; // mm
+float maxHeight = 285.0; // mm
 
 float maxRotationBodyOnPoint = 200.0; // mm
 
