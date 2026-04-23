@@ -45,7 +45,7 @@ All inputs are transmitted to the ESP32 in real time via WebSocket.
 | **Femur length** | 120 mm |
 | **Tibia length** | 175 mm |
 | **Body radius** | ~158 mm (default) |
-| **Communication** | WiFi (hotspot) + WebSocket |
+| **Communication** | FlySky Remote |
 | **Shell** | 3D-printed |
 | **Kinematics** | Inverse kinematics (law of cosines) |
 | **Language** | C++ (Arduino framework) |
@@ -65,7 +65,7 @@ All inputs are transmitted to the ESP32 in real time via WebSocket.
 ### 3D printing
 Inside of the STL Folder you find files for 3D printing.
 At the end of the filename you will find a "x5" or similar. 
-So with a "x3" you have to print this part 3 times.
+So with a "x5" you have to print this part 5 times.
 
 ### Prepare the Servos
 Use my programmer 
