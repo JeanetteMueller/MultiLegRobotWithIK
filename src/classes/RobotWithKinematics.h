@@ -28,8 +28,8 @@ class RobotWithKinematics
 public:
     uint8_t NUM_LEGS = 5; // Anzahl der Beine
     static constexpr uint8_t MAX_NUM_LEGS = 8;
-    static constexpr uint8_t WALKING_STEP_COUNT = 70; // Anzahl der interpolierten Schritte für Bewegungsabläufe
-
+    static constexpr uint16_t WALKING_STEP_COUNT = 80;   // Anzahl der interpolierten Schritte für Bewegungsabläufe
+    static constexpr uint16_t MAIN_LOOP_DELAY = 5;      // Millis zwischen denen der MainLoop ausgeführt wird.
     std::array<Vector3, MAX_NUM_LEGS> baseFootPositions; // Feste Fußpositionen auf dem Boden
     std::array<Vector3, MAX_NUM_LEGS> lastTargetPosition;
     std::array<Vector3, MAX_NUM_LEGS> targetPosition;
@@ -167,7 +167,7 @@ public:
         }
 
         // Zeit-Takt
-        if (millis() - previousStepMillis < 4)
+        if (millis() - previousStepMillis < MAIN_LOOP_DELAY)
         {
             return;
         }
@@ -316,15 +316,6 @@ public:
 
             baseFootExtend = newValue;
         }
-    }
-
-    /**
-     * Setzt die Stärke des Ease-In/Ease-Out für Schrittbewegungen
-     * 0.0 = linear, 0.5 = Smoothstep, 1.0 = Smootherstep
-     */
-    void setStepSmoothness(float value)
-    {
-        stepSmoothness = fmaxf(0.0f, fminf(1.0f, value));
     }
 
     /**
@@ -1012,7 +1003,7 @@ private:
             // Exponent < 1 → schnell starten/landen wird zu sanft starten/landen
             float centered = 2.0f * t - 1.0f; // -1 bis +1
             float sign = (centered >= 0) ? 1.0f : -1.0f;
-            float exponent = 1.0f / (1.0f + stepSmoothness * 6.0f); // 1.0 (linear) bis 0.2 (sehr weich)
+            float exponent = 1.0f / (1.0f + stepSmoothness * 1.0f); // 1.0 (linear) bis 0.2 (sehr weich)
             tPos = 0.5f + 0.5f * sign * powf(fabsf(centered), exponent);
         }
 
@@ -1030,11 +1021,14 @@ private:
             {
                 // Sinus-Bogen basiert auf linearem t (nicht eased),
                 // damit die Höhe symmetrisch bleibt
-                yAddition = sinf(M_PI * t) * d * 0.5f * curveMultiplier;
-                if (yAddition < 10)
+                float peak = d * 0.5f * curveMultiplier;
+
+                float minHeight = 30.0f;
+                if (peak < minHeight)
                 {
-                    yAddition = 10.0f * sinf(M_PI * t);
+                    peak = minHeight;
                 }
+                yAddition = sinf(M_PI * t) * peak;
             }
         }
 
@@ -1046,26 +1040,6 @@ private:
         float dx = x2 - x1;
         float dy = y2 - y1;
         return sqrtf(dx * dx + dy * dy);
-    }
-
-    float sinCurve(float distanz, uint8_t walkingStep, float amplitude) const
-    {
-        if (walkingStep == 0)
-        {
-            return 0;
-        }
-        else if (walkingStep == WALKING_STEP_COUNT - 1)
-        {
-            return 0;
-        }
-        // Position entlang der Distanz (0 bis distanz)
-        float position = (distanz / (WALKING_STEP_COUNT - 1)) * walkingStep;
-
-        // Winkel für Sinusfunktion (0 bis π, damit bei 0 startet und endet)
-        float winkel = M_PI * position / distanz;
-
-        // Sinuswert berechnen
-        return amplitude * sinf(winkel);
     }
 
     float degToRad(float deg) const

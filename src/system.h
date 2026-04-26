@@ -117,8 +117,8 @@ void loop()
     float legExtend = 170;
 
     float height = fmap(input->leftPoit, 0.0, 1000.0, minHeight, maxHeight);
-    float tiltY = fmap(input->leftStickVertical, -100.0, 100.0, maxTilt, -maxTilt);
-    float tiltX = fmap(input->leftStickHorizontal, 100.0, -100.0, maxTilt, -maxTilt);
+    float tiltY = fmap(input->leftStickVertical, -100.0, 100.0, -maxTilt, maxTilt);
+    float tiltX = fmap(input->leftStickHorizontal, 100.0, -100.0, -maxTilt, maxTilt);
     float rotateTorso = fmap(input->rightPoti, 0.0, 1000.0, -maxRotation, maxRotation);
 
     bool vehicleSteering = input->switchLeftInside == Top;
@@ -152,7 +152,6 @@ void loop()
     robot->setWalkDirection(walkX, walkY, rotateBody);
     robot->setBaseFootExtend(legExtend);
     robot->setPose(height, tiltX, tiltY, rotateTorso);
-    robot->setStepSmoothness(1.0);
 
     robot->mainLoop();
 
