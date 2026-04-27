@@ -27,13 +27,8 @@ When walking, the robot lifts one or two legs at a time while the remaining legs
 
 ## Controls
 
-On startup, the robot creates its own WiFi hotspot. Connect with your phone and open the control page in a browser. You get:
-
-- A virtual **joystick** for walk direction and speed
-- **Sliders** for body tilt (roll, pitch, yaw)
-- A **height slider** to raise or lower the body
-
-All inputs are transmitted to the ESP32 in real time via WebSocket.
+On startup, the robot uses a FlySky Reciever (10 channel) to connect to your FlySky Remote. 
+All inputs are transmitted to the ESP32 in real time.
 
 ## Specs
 
