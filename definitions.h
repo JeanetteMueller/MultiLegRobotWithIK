@@ -11,7 +11,6 @@ bool debug = false;
 
 SMS_STS st;
 
-#define NUMBER_OF_LEGS 5
 #define SERVO_NUM (NUMBER_OF_LEGS * 3) // Number of servos
 // u8 servoIds[SERVO_NUM] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 u8 servoIds[SERVO_NUM] = {5, 14, 15, 7, 8, 9, 4, 2, 3, 10, 11, 6, 13, 1, 12};
@@ -19,31 +18,78 @@ s16 newPosition[SERVO_NUM];
 u16 newSpeed[SERVO_NUM];
 u8 newAcc[SERVO_NUM];
 
-u16 speed = 4000;
-u8 acc = 0;
+const u16 speed = 4000;
+const u8 acc = 0;
 
 bool calibrated = false;
 
-RobotWithKinematics *robot;
-
 #include "../extraCalibrations.h"
 
-float bodyCenterToLegsCircleRadius = 104.175; // mm
-float coxaLength = 54.0;                      // mm
-float thighLength = 120.0;                    // mm
-float shinLength = 217.0 + 5.5;               // mm // shin + rubber pad
-float startBodyHeightOverGround = 160.0;      // mm
-float startLegExtend = 150.0;                 // mm
+const float bodyCenterToLegsCircleRadius = 104.175; // mm
+const float coxaLength = 54.0;                      // mm
+const float thighLength = 120.0;                    // mm
+const float shinLength = 217.0 + 5.5;               // mm // shin + rubber pad
+float startBodyHeightOverGround = 160.0;            // mm
+float startLegExtend = 170.0;                       // mm
 
-float maxTilt = 20.0;
-float maxRotation = 25.0;
-float maxStepWidth = 220.0;
+RobotWithKinematics *robot;
+static RobotLeg myLegs[NUMBER_OF_LEGS] = {
+    RobotLeg(
+        bodyCenterToLegsCircleRadius, // body radius in mm
+        coxaLength,                   // coxa length in mm
+        thighLength,                  // thigh length in mm
+        shinLength,                   // shin length in mm
+        startLegExtend,               // distance of first servo axis to foot
+        0,                            // degree of first servo from front of robot
+        0                             // internal rotation to fix 360 degree offset
+        ),
+    RobotLeg(
+        bodyCenterToLegsCircleRadius, // body radius in mm
+        coxaLength,                   // coxa length in mm
+        thighLength,                  // thigh length in mm
+        shinLength,                   // shin length in mm
+        startLegExtend,               // distance of first servo axis to foot
+        72,                           // degree of first servo from front of robot
+        -144                          // internal rotation to fix 360 degree offset
+        ),
+    RobotLeg(
+        bodyCenterToLegsCircleRadius, // body radius in mm
+        coxaLength,                   // coxa length in mm
+        thighLength,                  // thigh length in mm
+        shinLength,                   // shin length in mm
+        startLegExtend,               // distance of first servo axis to foot
+        144,                          // degree of first servo from front of robot
+        72                            // internal rotation to fix 360 degree offset
+        ),
+    RobotLeg(
+        bodyCenterToLegsCircleRadius, // body radius in mm
+        coxaLength,                   // coxa length in mm
+        thighLength,                  // thigh length in mm
+        shinLength,                   // shin length in mm
+        startLegExtend,               // distance of first servo axis to foot
+        216,                          // degree of first servo from front of robot
+        -72                           // internal rotation to fix 360 degree offset
+        ),
+    RobotLeg(
+        bodyCenterToLegsCircleRadius, // body radius in mm
+        coxaLength,                   // coxa length in mm
+        thighLength,                  // thigh length in mm
+        shinLength,                   // shin length in mm
+        startLegExtend,               // distance of first servo axis to foot
+        288,                          // degree of first servo from front of robot
+        144                           // internal rotation to fix 360 degree offset
+        )};
 
-float minHeight = 170.0; // mm
-float maxHeight = 285.0; // mm
+const uint16_t walkingStepCount = 80;
+const uint16_t mainLoopDelay = 5;
+const float maxTilt = 20.0;
+const float maxRotation = 25.0;
+const float maxStepWidth = 230.0;
 
-float maxRotationBodyOnPoint = 200.0; // mm
+const float minHeight = 170.0; // mm
+const float maxHeight = 285.0; // mm
 
+const float maxRotationBodyOnPoint = 300.0; // mm
 
 float waveLegA = 0;
 bool waveLegADirection = true;

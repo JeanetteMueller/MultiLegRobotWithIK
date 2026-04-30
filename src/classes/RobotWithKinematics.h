@@ -20,23 +20,25 @@
 #include <array>
 #include <stdexcept>
 
+#include "Vector3.h"
 #include "LegAngles.h"
 #include "BodyPose.h"
+
+#include "RobotLeg.h"
 
 class RobotWithKinematics
 {
 public:
     uint8_t NUM_LEGS = 5; // Anzahl der Beine
-    static constexpr uint8_t MAX_NUM_LEGS = 8;
-    static constexpr uint16_t WALKING_STEP_COUNT = 80;   // Anzahl der interpolierten Schritte für Bewegungsabläufe
-    static constexpr uint16_t MAIN_LOOP_DELAY = 5;      // Millis zwischen denen der MainLoop ausgeführt wird.
-    std::array<Vector3, MAX_NUM_LEGS> baseFootPositions; // Feste Fußpositionen auf dem Boden
-    std::array<Vector3, MAX_NUM_LEGS> lastTargetPosition;
-    std::array<Vector3, MAX_NUM_LEGS> targetPosition;
+private:
+    const uint16_t WALKING_STEP_COUNT; // Anzahl der interpolierten Schritte für Bewegungsabläufe
+    const uint16_t MAIN_LOOP_DELAY;    // Millis zwischen denen der MainLoop ausgeführt wird.
+
+    RobotLeg *legs = nullptr;
 
     uint8_t currentMovingLegA = 0;
     uint8_t currentMovingLegB = 0;
-    int8_t walkingStep = 0; // Zwischenschritt Nummer des aktuellen Bewegungsablauf
+    uint16_t walkingStep = 0; // Zwischenschritt Nummer des aktuellen Bewegungsablauf
 
     enum WalkState : uint8_t
     {
@@ -56,6 +58,7 @@ public:
         SP_MovingOutA, // Bein A fährt zurück in die Ausgangsposition
         SP_MovingOutB  // Bein B fährt zurück in die Ausgangsposition
     };
+
     SpecialPoseState specialPoseState = SP_Idle;
     uint8_t activeSpecialPose = 0;     // welche Sonderpose (0..3)
     uint8_t specialPoseLegA = 2;       // welches Bein zuerst
@@ -69,19 +72,9 @@ public:
     Vector3 specialMoveTarget;
     uint8_t specialMovingLeg = 0; // das Bein, das sich gerade bewegt
 
-private:
     uint32_t previousStepMillis = 0;
 
-    // Roboter-Geometrie (in mm)
-    const float BODY_RADIUS; // Radius des zylindrischen Körpers
-
-    const float COXA_LENGTH;  // Länge der Coxa (L0)
-    const float FEMUR_LENGTH; // Länge des Oberschenkels (L1)
-    const float TIBIA_LENGTH; // Länge des Unterschenkels (L2)
-
-    float baseFootExtend;
-    float maxStepWidth;
-    float stepSmoothness = 1.0f; // 0.0 = linear, 1.0 = smoother
+    const float maxStepWidth;
     float walk_x = 0;
     float walk_y = 0;
     float rotate_Body = 0;
@@ -90,42 +83,31 @@ private:
 
     BodyPose m_pose;
 
-    static constexpr float rotateCoordinatesByLeg[MAX_NUM_LEGS] = {0, -144, 72, -72, 144, 0, 0, 0};
-
-    std::array<float, MAX_NUM_LEGS> m_legBaseAngles; // Basis-Winkel der Beine (72° versetzt)
 public:
     /**
      * Konstruktor
      */
     RobotWithKinematics(
-        float bodyRadius,
         uint8_t numberOfLegs,
-        float coxaLength,
-        float thighLength,
-        float shinLength,
-        float baseFootExtend,
-        float maxStepWidth) : BODY_RADIUS(bodyRadius),
-                              NUM_LEGS(numberOfLegs),
-                              COXA_LENGTH(coxaLength),
-                              FEMUR_LENGTH(thighLength),
-                              TIBIA_LENGTH(shinLength),
-                              baseFootExtend(baseFootExtend),
-                              maxStepWidth(maxStepWidth)
+        float maxStepWidth,
+        uint16_t walkingStepCount,
+        uint16_t mainLoopDelay,
+        RobotLeg *legs) : NUM_LEGS(numberOfLegs),
+                          maxStepWidth(maxStepWidth),
+                          WALKING_STEP_COUNT(walkingStepCount),
+                          MAIN_LOOP_DELAY(mainLoopDelay),
+                          legs(legs)
     {
-        float footRadius = BODY_RADIUS + baseFootExtend; // Abstand vom Zentrum
+        // nothing to do here
 
-        // Initialisiere Fußpositionen (gleichmäßig verteilt, 72° = 2π/5 versetzt)
-        for (uint8_t i = 0; i < NUM_LEGS; i++)
+        for (uint8_t legIndex = 0; legIndex < NUM_LEGS; legIndex++)
         {
-            m_legBaseAngles[i] = i * (2.0 * M_PI / NUM_LEGS);
-
-            baseFootPositions[i] = Vector3(
-                cosf(m_legBaseAngles[i]) * footRadius,
-                0.0, // Boden
-                sinf(m_legBaseAngles[i]) * footRadius);
+            Serial.print("leg ");
+            Serial.print(legIndex);
+            Serial.print(" baseAngle ");
+            Serial.print(legs[legIndex].baseAngle);
+            Serial.println("");
         }
-        lastTargetPosition = baseFootPositions;
-        targetPosition = baseFootPositions;
     }
 
     /**
@@ -178,7 +160,11 @@ public:
         if (walkingStep >= WALKING_STEP_COUNT)
         {
             walkingStep = 0;
-            lastTargetPosition = targetPosition;
+
+            for (uint8_t legIndex = 0; legIndex < NUM_LEGS; legIndex++)
+            {
+                legs[legIndex].lastTargetPosition = legs[legIndex].targetPosition;
+            }
 
             currentPhase++;
             if (currentPhase >= NUM_LEGS)
@@ -203,79 +189,13 @@ public:
     }
 
     /**
-     * true wenn aktuell Input vorliegt, der tatsächlich Bewegung auslösen soll.
-     */
-    bool hasWalkInput() const
-    {
-        float minSpeed = maxStepWidth / 3;
-        if (walk_x >= minSpeed || walk_x <= -minSpeed)
-            return true;
-        if (walk_y >= minSpeed || walk_y <= -minSpeed)
-            return true;
-        if (rotate_Body >= 10 || rotate_Body <= -10)
-            return true;
-        return false;
-    }
-
-    /**
-     * Basis-Gelenkwerte für den Robot in transportfähigem Zustand
-     */
-    std::array<LegAngles, MAX_NUM_LEGS> standBy() const
-    {
-        std::array<LegAngles, MAX_NUM_LEGS> results;
-
-        for (uint8_t legIndex = 0; legIndex < NUM_LEGS; legIndex++)
-        {
-            LegAngles la;
-            la.valid = true;
-
-            la.coxa = degToRad(0);
-            la.femur = degToRad(90.24);
-            la.tibia = degToRad(90 - legIndex * 7.3);
-
-            results[legIndex] = la;
-        }
-        return results;
-    }
-
-    /**
-     * Gelenkwerte für den Übergang zwischen Standby und regulärem verarbeiten der Input Daten
-     */
-    std::array<LegAngles, MAX_NUM_LEGS> preOperationPositions() const
-    {
-        std::array<LegAngles, MAX_NUM_LEGS> results;
-
-        for (uint8_t legIndex = 0; legIndex < NUM_LEGS; legIndex++)
-        {
-            LegAngles la;
-            la.valid = true;
-            la.coxa = degToRad(0);
-            la.femur = degToRad(90.24);
-            la.tibia = degToRad(-132.75);
-
-            results[legIndex] = la;
-        }
-        return results;
-    }
-
-    /**
-     * Setze alle Zielkoordinaten zurück
-     */
-    void resetTargetPositions()
-    {
-        for (uint8_t legIndex = 0; legIndex < NUM_LEGS; legIndex++)
-        {
-            targetPosition[legIndex] = baseFootPositions[legIndex];
-        }
-    }
-
-    /**
      * Zielkoordinaten vorbereiten bevor der Lauf-Loop starten kann
      */
     void prepareTargetPositions()
     {
-
         bool walking = hasWalkInput();
+
+        bool walkWithTwoLegs = currentMovingLegA != currentMovingLegB;
 
         for (uint8_t legIndex = 0; legIndex < NUM_LEGS; legIndex++)
         {
@@ -286,11 +206,18 @@ public:
                 continue;
             }
 
-            Vector3 newTarget = walking
-                                    ? newTargetPosition(legIndex)
-                                    : baseFootPositions[legIndex];
+            bool isCurrentMovingLeg = (currentMovingLegA == legIndex || currentMovingLegB == legIndex);
 
-            targetPosition[legIndex] = getStepTargetPosition(legIndex, newTarget);
+            Vector3 newTarget = walking
+                                    ? legs[legIndex].newTargetPosition(walk_x, walk_y, rotate_Body, walkWithTwoLegs, isCurrentMovingLeg)
+                                    : legs[legIndex].baseFootPosition;
+            bool isMoving = false;
+
+            if (currentMovingLegA == legIndex || currentMovingLegB == legIndex)
+            {
+                isMoving = true;
+            }
+            legs[legIndex].targetPosition = legs[legIndex].getStepTargetPosition(WALKING_STEP_COUNT, walkingStep, newTarget, isMoving);
         }
     }
 
@@ -299,22 +226,20 @@ public:
      */
     void setBaseFootExtend(float newValue)
     {
-        if (currentPhase == 0 && walkingStep == 0 && baseFootExtend != newValue)
+        if (currentPhase == 0 && walkingStep == 0)
         {
-            Serial.println("setBaseFootExtend");
-            float footRadius = BODY_RADIUS + newValue; // Abstand vom Zentrum
-
             for (uint8_t i = 0; i < NUM_LEGS; i++)
             {
+                float footRadius = legs[i].BODY_RADIUS + newValue; // Abstand vom Basis Servo
                 float angle = i * (2.0 * M_PI / NUM_LEGS);
 
-                baseFootPositions[i] = Vector3(
+                legs[i].baseFootPosition = Vector3(
                     cosf(angle) * footRadius,
                     0.0, // Boden
                     sinf(angle) * footRadius);
-            }
 
-            baseFootExtend = newValue;
+                legs[i].baseFootExtend = newValue;
+            }
         }
     }
 
@@ -344,118 +269,17 @@ public:
     }
 
     /**
-     * Gibt die aktuelle Pose zurück
-     */
-    const BodyPose &getPose() const
-    {
-        return m_pose;
-    }
-
-    /**
-     * Neigt den Körper so, dass das gewählte Bein am höchsten Punkt ist.
-     *
-     * @param legIndex Index des Beins (0-4), das am höchsten sein soll
-     * @param tiltAngleDeg Neigungswinkel in Grad (positiv = Bein wird angehoben)
-     */
-    void tiltTowardsLeg(int legIndex, double tiltAngleDeg)
-    {
-        if (legIndex < 0 || legIndex >= NUM_LEGS)
-        {
-            throw std::out_of_range("Leg index must be 0-4");
-        }
-
-        const double tiltAngle = tiltAngleDeg * M_PI / 180.0;
-        const double legAngle = m_legBaseAngles[legIndex];
-
-        // Die Neigungsachse steht senkrecht zur Beinrichtung
-        m_pose.tiltX = -tiltAngle * std::sin(legAngle);
-        m_pose.tiltZ = tiltAngle * std::cos(legAngle);
-    }
-
-    /**
-     * Neigt den Körper in eine beliebige Richtung.
-     *
-     * @param directionDeg Richtung der Neigung in Grad (0° = Bein 0 Richtung)
-     * @param tiltAngleDeg Neigungswinkel in Grad
-     */
-    void tiltInDirection(double directionDeg, double tiltAngleDeg)
-    {
-        const double direction = directionDeg * M_PI / 180.0;
-        const double tiltAngle = tiltAngleDeg * M_PI / 180.0;
-
-        m_pose.tiltX = -tiltAngle * std::sin(direction);
-        m_pose.tiltZ = tiltAngle * std::cos(direction);
-    }
-
-    /**
-     * Setzt Neigung zu einem Bein und behält andere Parameter bei.
-     */
-    void setTiltTowardsLeg(int legIndex, double tiltAngleDeg)
-    {
-        double height = m_pose.height;
-        double rotY = m_pose.rotY;
-
-        tiltTowardsLeg(legIndex, tiltAngleDeg);
-
-        m_pose.height = height;
-        m_pose.rotY = rotY;
-    }
-
-    /**
-     * Berechnet die Gelenkwinkel für ein einzelnes Bein
-     *
-     * @param legIndex Index des Beins (0-4)
-     * @return LegAngles Struktur mit den 3 Winkeln
-     */
-    LegAngles calculateLegAngles(uint8_t legIndex) const
-    {
-        if (legIndex < 0 || legIndex >= NUM_LEGS)
-        {
-            Serial.println(" ->      Leg index must be 0-4");
-        }
-
-        LegAngles result;
-        result.valid = false;
-        result.coxa = 0.0;
-        result.femur = 0.0;
-        result.tibia = 0.0;
-
-        const float baseLegAngle = m_legBaseAngles[legIndex];
-        const float legAngleWithRot = baseLegAngle + m_pose.rotY;
-
-        // Berechne Coxa-Basis Position nach Körper-Rotation
-        float coxaBaseX, coxaBaseY, coxaBaseZ;
-        calculateCoxaBasePosition(legAngleWithRot, coxaBaseX, coxaBaseY, coxaBaseZ);
-
-        // Fuß-Position (bleibt auf dem Boden, basiert auf Basis-Winkel ohne Körperdrehung)
-        // // Der Fuß ist radial vom Körper: BODY_RADIUS + COXA_LENGTH + footOffset
-        // const float footRadialDist = BODY_RADIUS + COXA_LENGTH + baseFootExtend;
-        // const float footX = footRadialDist * cosf(baseLegAngle);
-        // const float footY = 0.0;
-        // const float footZ = footRadialDist * sinf(baseLegAngle);
-        const float footX = targetPosition[legIndex].x;
-        const float footY = targetPosition[legIndex].y;
-        const float footZ = targetPosition[legIndex].z;
-
-        // 3-DOF Inverse Kinematik berechnen
-        result = solveIK3DOF(legIndex, coxaBaseX, coxaBaseY, coxaBaseZ,
-                             footX, footY, footZ, legAngleWithRot);
-
-        return result;
-    }
-
-    /**
      * Berechnet die Gelenkwinkel für alle 5 Beine
      *
      * @return Array mit 5 LegAngles Strukturen
      */
-    std::array<LegAngles, MAX_NUM_LEGS> calculateAllLegAngles() const
+    std::array<LegAngles, NUMBER_OF_LEGS> calculateAllLegAngles() const
     {
-        std::array<LegAngles, MAX_NUM_LEGS> results;
+        std::array<LegAngles, NUMBER_OF_LEGS> results;
 
         for (uint8_t legIndex = 0; legIndex < NUM_LEGS; ++legIndex)
         {
-            results[legIndex] = calculateLegAngles(legIndex);
+            results[legIndex] = legs[legIndex].calculateLegAngles(m_pose);
         }
 
         return results;
@@ -468,39 +292,12 @@ public:
     {
         for (uint8_t legIndex = 0; legIndex < NUM_LEGS; ++legIndex)
         {
-            if (!calculateLegAngles(legIndex).valid)
+            if (!legs[legIndex].calculateLegAngles(m_pose).valid)
             {
                 return false;
             }
         }
         return true;
-    }
-    /**
-     * Gibt den Basis-Winkel eines Beins zurück (in Radiant)
-     */
-    float getLegBaseAngle(int legIndex) const
-    {
-        if (legIndex < 0 || legIndex >= NUM_LEGS)
-        {
-            Serial.println(" ->       Leg index must be 0-4");
-        }
-        return m_legBaseAngles[legIndex];
-    }
-
-    /**
-     * Gibt die maximale Reichweite eines Beins zurück (Coxa + Femur + Tibia)
-     */
-    float getMaxReach() const
-    {
-        return COXA_LENGTH + FEMUR_LENGTH + TIBIA_LENGTH;
-    }
-
-    /**
-     * Gibt die minimale Reichweite eines Beins zurück
-     */
-    float getMinReach() const
-    {
-        return COXA_LENGTH + fabsf(FEMUR_LENGTH - TIBIA_LENGTH);
     }
 
     /**
@@ -520,26 +317,6 @@ public:
             startSpecialMove(specialPoseLegA, targetForSpecialPose(specialPoseLegA, pose));
             specialPoseState = SP_MovingInA;
         }
-    }
-
-    /**
-     * Liefert true, solange gerade eine Sonderpose-Sequenz läuft oder gehalten wird.
-     * Während dieser Zeit dürfen die regulären Walk-Ziele nicht auf die Beine
-     * geschrieben werden, die an der Sonderpose beteiligt sind.
-     */
-    bool isInSpecialPose() const
-    {
-        return specialPoseState != SP_Idle;
-    }
-
-    /**
-     * true wenn das angegebene Bein gerade Teil einer Sonderpose ist.
-     */
-    bool legIsInSpecialPose(uint8_t legIndex) const
-    {
-        if (specialPoseState == SP_Idle)
-            return false;
-        return legIndex == specialPoseLegA || legIndex == specialPoseLegB;
     }
 
     /**
@@ -567,7 +344,7 @@ public:
                 if (!specialPoseRequested)
                 {
                     // Loslassen -> Rückweg starten mit Bein A
-                    startSpecialMove(specialPoseLegA, baseFootPositions[specialPoseLegA]);
+                    startSpecialMove(specialPoseLegA, legs[specialPoseLegA].baseFootPosition);
                     specialPoseState = SP_MovingOutA;
                 }
             }
@@ -593,6 +370,31 @@ public:
     }
 
 private:
+    /**
+     * true wenn aktuell Input vorliegt, der tatsächlich Bewegung auslösen soll.
+     */
+    bool hasWalkInput() const
+    {
+        float minSpeed = maxStepWidth / 3;
+        if (walk_x >= minSpeed || walk_x <= -minSpeed)
+            return true;
+        if (walk_y >= minSpeed || walk_y <= -minSpeed)
+            return true;
+        if (rotate_Body >= 10 || rotate_Body <= -10)
+            return true;
+        return false;
+    }
+
+    /**
+     * true wenn das angegebene Bein gerade Teil einer Sonderpose ist.
+     */
+    bool legIsInSpecialPose(uint8_t legIndex) const
+    {
+        if (specialPoseState == SP_Idle)
+            return false;
+        return legIndex == specialPoseLegA || legIndex == specialPoseLegB;
+    }
+
     void configureSpecialPoseLegs(uint8_t pose)
     {
         // Welches Bein-Paar für welche Pose. Bei 5 Beinen gegenüberliegend = +2 oder +3.
@@ -620,7 +422,7 @@ private:
     void startSpecialMove(uint8_t legIndex, Vector3 target)
     {
         specialMovingLeg = legIndex;
-        specialMoveStart = targetPosition[legIndex];
+        specialMoveStart = legs[legIndex].targetPosition;
         specialMoveTarget = target;
         specialPoseStep = 0;
         previousSpecialStepMillis = millis();
@@ -643,13 +445,13 @@ private:
         Vector3 offset = offsetForSpecialPose(legIndex, pose);
 
         // Offset in das radial/tangential-Koordinatensystem des Beins drehen
-        const float angle = m_legBaseAngles[legIndex];
+        const float angle = legs[legIndex].baseAngle;
         const float radialX = cosf(angle);
         const float radialZ = sinf(angle);
         const float tangentX = -sinf(angle);
         const float tangentZ = cosf(angle);
 
-        Vector3 base = baseFootPositions[legIndex];
+        Vector3 base = legs[legIndex].baseFootPosition;
         return Vector3(
             base.x + offset.x * radialX + offset.z * tangentX,
             base.y + offset.y,
@@ -693,39 +495,51 @@ private:
         case SP_MovingInA:
         {
             // Bein A bewegt sich zum Sonderpose-Ziel
-            targetPosition[specialMovingLeg] = interpolateSin(
-                specialMoveStart, specialMoveTarget, specialPoseStep, 1.0f);
+            legs[specialMovingLeg].targetPosition = legs[specialMovingLeg].interpolateSin(WALKING_STEP_COUNT,
+                                                                                          specialMoveStart,
+                                                                                          specialMoveTarget,
+                                                                                          specialPoseStep,
+                                                                                          1.0f);
             break;
         }
         case SP_MovingInB:
         {
             // Bein A bleibt auf seinem Ziel, Bein B fährt
-            targetPosition[specialPoseLegA] = targetForSpecialPose(specialPoseLegA, activeSpecialPose);
-            targetPosition[specialMovingLeg] = interpolateSin(
-                specialMoveStart, specialMoveTarget, specialPoseStep, 1.0f);
+            legs[specialPoseLegA].targetPosition = targetForSpecialPose(specialPoseLegA, activeSpecialPose);
+            legs[specialMovingLeg].targetPosition = legs[specialMovingLeg].interpolateSin(WALKING_STEP_COUNT,
+                                                                                          specialMoveStart,
+                                                                                          specialMoveTarget,
+                                                                                          specialPoseStep,
+                                                                                          1.0f);
             break;
         }
         case SP_Holding:
         {
             // Beide Beine halten ihre Sonderposition
-            targetPosition[specialPoseLegA] = targetForSpecialPose(specialPoseLegA, activeSpecialPose);
-            targetPosition[specialPoseLegB] = targetForSpecialPose(specialPoseLegB, activeSpecialPose);
+            legs[specialPoseLegA].targetPosition = targetForSpecialPose(specialPoseLegA, activeSpecialPose);
+            legs[specialPoseLegB].targetPosition = targetForSpecialPose(specialPoseLegB, activeSpecialPose);
             break;
         }
         case SP_MovingOutA:
         {
             // Bein B bleibt noch oben, Bein A geht zurück
-            targetPosition[specialPoseLegB] = targetForSpecialPose(specialPoseLegB, activeSpecialPose);
-            targetPosition[specialMovingLeg] = interpolateSin(
-                specialMoveStart, specialMoveTarget, specialPoseStep, 1.0f);
+            legs[specialPoseLegB].targetPosition = targetForSpecialPose(specialPoseLegB, activeSpecialPose);
+            legs[specialMovingLeg].targetPosition = legs[specialMovingLeg].interpolateSin(WALKING_STEP_COUNT,
+                                                                                          specialMoveStart,
+                                                                                          specialMoveTarget,
+                                                                                          specialPoseStep,
+                                                                                          1.0f);
             break;
         }
         case SP_MovingOutB:
         {
             // Bein A ist schon unten, Bein B geht jetzt zurück
-            targetPosition[specialPoseLegA] = baseFootPositions[specialPoseLegA];
-            targetPosition[specialMovingLeg] = interpolateSin(
-                specialMoveStart, specialMoveTarget, specialPoseStep, 1.0f);
+            legs[specialPoseLegA].targetPosition = legs[specialPoseLegA].baseFootPosition;
+            legs[specialMovingLeg].targetPosition = legs[specialMovingLeg].interpolateSin(WALKING_STEP_COUNT,
+                                                                                          specialMoveStart,
+                                                                                          specialMoveTarget,
+                                                                                          specialPoseStep,
+                                                                                          1.0f);
             break;
         }
         default:
@@ -754,7 +568,7 @@ private:
 
         case SP_MovingOutA:
             // Bein A ist zurück -> Bein B zurückbewegen
-            startSpecialMove(specialPoseLegB, baseFootPositions[specialPoseLegB]);
+            startSpecialMove(specialPoseLegB, legs[specialPoseLegB].baseFootPosition);
             specialPoseState = SP_MovingOutB;
             break;
 
@@ -762,289 +576,13 @@ private:
             // Alles zurück -> Idle
             specialPoseState = SP_Idle;
             // lastTargetPosition synchronisieren, damit die Laufmechanik sauber weiterläuft
-            lastTargetPosition[specialPoseLegA] = baseFootPositions[specialPoseLegA];
-            lastTargetPosition[specialPoseLegB] = baseFootPositions[specialPoseLegB];
+            legs[specialPoseLegA].lastTargetPosition = legs[specialPoseLegA].baseFootPosition;
+            legs[specialPoseLegB].lastTargetPosition = legs[specialPoseLegB].baseFootPosition;
             break;
 
         default:
             break;
         }
-    }
-
-private:
-    /**
-     * Berechnet die Coxa-Basis Position nach Körper-Rotation
-     */
-    void calculateCoxaBasePosition(float legAngleWithRot,
-                                   float &coxaBaseX, float &coxaBaseY, float &coxaBaseZ) const
-    {
-        // Basis-Position am Körperrand
-        coxaBaseX = BODY_RADIUS * cosf(legAngleWithRot);
-        coxaBaseY = 0.0;
-        coxaBaseZ = BODY_RADIUS * sinf(legAngleWithRot);
-
-        // Rotation um X-Achse (Pitch)
-        float tempY = coxaBaseY * cosf(m_pose.tiltX) - coxaBaseZ * sinf(m_pose.tiltX);
-        float tempZ = coxaBaseY * sinf(m_pose.tiltX) + coxaBaseZ * cosf(m_pose.tiltX);
-        coxaBaseY = tempY;
-        coxaBaseZ = tempZ;
-
-        // Rotation um Z-Achse (Roll)
-        float tempX = coxaBaseX * cosf(m_pose.tiltZ) - coxaBaseY * sinf(m_pose.tiltZ);
-        tempY = coxaBaseX * sinf(m_pose.tiltZ) + coxaBaseY * cosf(m_pose.tiltZ);
-        coxaBaseX = tempX;
-        coxaBaseY = tempY;
-
-        // Verschiebung zur Körperhöhe
-        coxaBaseY += m_pose.height;
-    }
-
-    /**
-     * 3-DOF Inverse Kinematik für Coxa-Femur-Tibia Konfiguration
-     *
-     * Die Coxa zeigt IMMER nach außen (in baseLegAngle Richtung)
-     * Nur bei seitlicher Verschiebung (durch Körperdrehung) dreht sie sich
-     */
-    LegAngles solveIK3DOF(uint8_t legIndex, float coxaBaseX, float coxaBaseY, float coxaBaseZ,
-                          float footX, float footY, float footZ,
-                          float baseLegAngle) const
-    {
-        LegAngles result;
-        result.valid = false;
-        result.coxa = 0.0;
-        result.femur = 0.0;
-        result.tibia = 0.0;
-
-        // Vektor von Coxa-Basis zu Fuß
-        const float deltaX = footX - coxaBaseX;
-        const float deltaY = footY - coxaBaseY;
-        const float deltaZ = footZ - coxaBaseZ;
-
-        // Basis-Richtung (radial nach außen)
-        const float baseRadialX = cosf(baseLegAngle);
-        const float baseRadialZ = sinf(baseLegAngle);
-
-        // Tangentiale Richtung
-        const float tangentX = -sinf(baseLegAngle);
-        const float tangentZ = cosf(baseLegAngle);
-
-        // Projiziere Fuß-Position auf lokales Koordinatensystem
-        const float footRadial = deltaX * baseRadialX + deltaZ * baseRadialZ;
-        const float footTangent = deltaX * tangentX + deltaZ * tangentZ;
-
-        // Coxa-Winkel: nur für seitliche Abweichung (tangential)
-        // Die Coxa zeigt primär nach außen, dreht sich aber für seitliche Korrektur
-        float coxaAngle = atan2f(footTangent, fmaxf(footRadial, 0.001));
-
-        // Normalisiere auf -π bis +π
-        while (coxaAngle > M_PI)
-            coxaAngle -= 2.0 * M_PI;
-        while (coxaAngle < -M_PI)
-            coxaAngle += 2.0 * M_PI;
-
-        // Effektive Coxa-Richtung nach Drehung
-        const float effCoxaAngle = baseLegAngle + coxaAngle;
-
-        // Richtung der Coxa (nach außen)
-        const float coxaDirX = cosf(effCoxaAngle);
-        const float coxaDirZ = sinf(effCoxaAngle);
-
-        // Position am Ende der Coxa
-        const float coxaEndX = coxaBaseX + COXA_LENGTH * coxaDirX;
-        const float coxaEndY = coxaBaseY; // Coxa ist horizontal
-        const float coxaEndZ = coxaBaseZ + COXA_LENGTH * coxaDirZ;
-
-        // Vektor von Coxa-Ende zu Fuß
-        const float dx = footX - coxaEndX;
-        const float dy = footY - coxaEndY;
-        const float dz = footZ - coxaEndZ;
-
-        // Projiziere auf die Coxa-Richtung (radial vom Coxa-Ende aus gesehen)
-        // Positiv = nach außen, Negativ = zurück zum Körper
-        const float footRadialFromCoxa = dx * coxaDirX + dz * coxaDirZ;
-
-        // Gesamte horizontale Distanz
-        const float legPlaneHoriz = sqrtf(dx * dx + dz * dz);
-        const float legPlaneDist = sqrtf(legPlaneHoriz * legPlaneHoriz + dy * dy);
-
-        // Prüfe Erreichbarkeit
-        if (legPlaneDist > FEMUR_LENGTH + TIBIA_LENGTH ||
-            legPlaneDist < fabsf(FEMUR_LENGTH - TIBIA_LENGTH))
-        {
-            return result; // Nicht erreichbar
-        }
-
-        // 2D IK für Femur und Tibia mit Kosinussatz
-        const float cosKnee = (legPlaneDist * legPlaneDist -
-                               FEMUR_LENGTH * FEMUR_LENGTH -
-                               TIBIA_LENGTH * TIBIA_LENGTH) /
-                              (2.0 * FEMUR_LENGTH * TIBIA_LENGTH);
-
-        // Tibia-Winkel (negativ = Knie nach außen gebeugt)
-        const float tibiaAngle = -acosf(fmaxf(-1.0, fminf(1.0, cosKnee)));
-
-        // Femur-Winkel
-        const float k1 = FEMUR_LENGTH + TIBIA_LENGTH * cosf(tibiaAngle);
-        const float k2 = TIBIA_LENGTH * sinf(tibiaAngle);
-
-        // Wenn der Fuß zurück zum Körper zeigt, muss die horizontale Distanz negativ sein
-        const float signedHoriz = (footRadialFromCoxa >= 0) ? legPlaneHoriz : -legPlaneHoriz;
-        const float femurAngle = atan2f(dy, signedHoriz) - atan2f(k2, k1);
-
-        result.coxa = coxaAngle;
-        result.femur = femurAngle;
-        result.tibia = tibiaAngle;
-        result.valid = result.allAnglesInLimit(legIndex);
-
-        return result;
-    }
-
-    Vector3 newTargetPosition(uint8_t legIndex) const
-    {
-        float x = walk_x;
-        float y = walk_y;
-        float r = rotate_Body;
-
-        Vector3 walkVector = Vector3(x, 0, y);
-        float rotation = rotateCoordinatesByLeg[legIndex];
-        Vector3 rotated = walkVector.rotate(degToRad(rotation));
-        rotated.x = -rotated.x;
-        rotated = modifyVectorToRotateOnPosition(legIndex, rotated, r);
-
-        Vector3 newTarget = lastTargetPosition[legIndex];
-
-        if (currentMovingLegA != currentMovingLegB)
-        {
-            // Lösung mit 2 beinen in der Luft
-
-            if (currentMovingLegA == legIndex || currentMovingLegB == legIndex)
-            {
-                newTarget.x -= rotated.x * 0.25;
-                newTarget.z -= rotated.z * 0.25;
-            }
-            else
-            {
-                newTarget.x += rotated.x / 6.0;
-                newTarget.z += rotated.z / 6.0;
-            }
-        }
-        else
-        {
-            // Lösung mit nur einem Bein in der Luft
-
-            float numberOfLegs = static_cast<float>(NUM_LEGS);
-
-            if (currentMovingLegA == legIndex || currentMovingLegB == legIndex)
-            {
-                // Gesamtbewegung durch 5 mal 4 da ein Bein Schreitet während andere nur schieben
-                newTarget.x -= rotated.x / numberOfLegs * (numberOfLegs - 1);
-                newTarget.z -= rotated.z / numberOfLegs * (numberOfLegs - 1);
-            }
-            else
-            {
-                // Gesamtbewegung durch die Anzahl der Beine
-                newTarget.x += rotated.x / numberOfLegs;
-                newTarget.z += rotated.z / numberOfLegs;
-            }
-        }
-
-        return newTarget;
-    }
-
-    Vector3 modifyVectorToRotateOnPosition(uint8_t legIndex, Vector3 vector, float rotation) const
-    {
-        float angle = m_legBaseAngles[legIndex];
-
-        // Tangentiale Richtung am Kreis
-        vector.x += rotation * (-sinf(angle));
-        vector.z += rotation * cosf(angle);
-
-        return vector;
-    }
-
-    Vector3 getStepTargetPosition(uint8_t legIndex, Vector3 newTarget) const
-    {
-        Vector3 origin = lastTargetPosition[legIndex];
-        if (origin.x != newTarget.x || origin.y != newTarget.y || origin.z != newTarget.z)
-        {
-            float curveMultiplier = 0.0;
-
-            if (currentMovingLegA == legIndex || currentMovingLegB == legIndex)
-            {
-                curveMultiplier = 1.0;
-            }
-
-            return interpolateSin(origin, newTarget, walkingStep, curveMultiplier);
-        }
-
-        return origin;
-    }
-
-    Vector3 interpolateSin(Vector3 start, Vector3 end, uint8_t walkingStep, float curveMultiplier) const
-    {
-        if (walkingStep == 0)
-        {
-            return start;
-        }
-        else if (walkingStep == WALKING_STEP_COUNT - 1)
-        {
-            return end;
-        }
-
-        // Normalisierter Fortschritt (0.0 bis 1.0)
-        float t = static_cast<float>(walkingStep) / (WALKING_STEP_COUNT - 1);
-
-        // Ease-In/Ease-Out nur für Beine in der Luft
-        // stepSmoothness steuert die Stärke: 0.0 = linear, höher = weicher
-        float tPos = t;
-        if (curveMultiplier > 0 && stepSmoothness > 0)
-        {
-            // Symmetrische Potenz-Kurve: t wird um 0.5 zentriert,
-            // Exponent < 1 → schnell starten/landen wird zu sanft starten/landen
-            float centered = 2.0f * t - 1.0f; // -1 bis +1
-            float sign = (centered >= 0) ? 1.0f : -1.0f;
-            float exponent = 1.0f / (1.0f + stepSmoothness * 1.0f); // 1.0 (linear) bis 0.2 (sehr weich)
-            tPos = 0.5f + 0.5f * sign * powf(fabsf(centered), exponent);
-        }
-
-        // X/Z mit Ease-In/Ease-Out interpolieren
-        float x = start.x + (end.x - start.x) * tPos;
-        float y = start.y + (end.y - start.y) * tPos;
-        float z = start.z + (end.z - start.z) * tPos;
-
-        // Y-Bogen für Beine in der Luft
-        float yAddition = 0;
-        if (curveMultiplier > 0)
-        {
-            float d = distance(start.x, start.z, end.x, end.z);
-            if (d > 0)
-            {
-                // Sinus-Bogen basiert auf linearem t (nicht eased),
-                // damit die Höhe symmetrisch bleibt
-                float peak = d * 0.5f * curveMultiplier;
-
-                float minHeight = 30.0f;
-                if (peak < minHeight)
-                {
-                    peak = minHeight;
-                }
-                yAddition = sinf(M_PI * t) * peak;
-            }
-        }
-
-        return Vector3(x, y + yAddition, z);
-    }
-
-    float distance(float x1, float y1, float x2, float y2) const
-    {
-        float dx = x2 - x1;
-        float dy = y2 - y1;
-        return sqrtf(dx * dx + dy * dy);
-    }
-
-    float degToRad(float deg) const
-    {
-        return deg * M_PI / 180.0f;
     }
 };
 

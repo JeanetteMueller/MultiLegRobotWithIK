@@ -10,13 +10,15 @@
 #ifndef BodyPose_H
 #define BodyPose_H
 
+#include "BodyPose.h"
+
 // Struktur für Körper-Parameter
 struct BodyPose
 {
-    float height;     // Höhe des Körpers über dem Boden (mm)
-    float tiltX;      // Kippen um X-Achse / Pitch (Radiant)
-    float tiltZ;      // Kippen um Z-Achse / Roll (Radiant)
-    float rotY;       // Drehung um Y-Achse / Yaw (Radiant)
+    float height; // Höhe des Körpers über dem Boden (mm)
+    float tiltX;  // Kippen um X-Achse / Pitch (Radiant)
+    float tiltZ;  // Kippen um Z-Achse / Roll (Radiant)
+    float rotY;   // Drehung um Y-Achse / Yaw (Radiant)
 
     // Konstruktor mit Standardwerten
     BodyPose() : height(200.0), tiltX(0.0), tiltZ(0.0), rotY(0.0) {}

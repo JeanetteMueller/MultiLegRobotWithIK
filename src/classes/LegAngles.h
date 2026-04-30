@@ -25,7 +25,7 @@ struct LegAngles
     double femurDeg() const { return femur * 180.0 / M_PI; }
     double tibiaDeg() const { return tibia * 180.0 / M_PI; }
 
-    bool allAnglesInLimit(uint8_t legIndex) const
+    bool allAnglesInLimit() const
     {
         bool ok = true;
 
@@ -47,8 +47,6 @@ struct LegAngles
             }
         }
 
-
-
         if (lift > limit_lift || lift < -limit_lift || debug)
         {
             Serial.print(" lift not in limit: ");
@@ -67,12 +65,6 @@ struct LegAngles
             {
                 ok = false;
             }
-        }
-
-        if (!ok || debug)
-        {
-            Serial.print(" -> leg: ");
-            Serial.println(legIndex);
         }
 
         return ok;

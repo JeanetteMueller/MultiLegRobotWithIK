@@ -115,9 +115,9 @@ void moveOneLeg(uint8_t legIndex, LegAngles angles, bool finalize)
   }
 }
 
-void moveAllLegs(std::array<LegAngles, RobotWithKinematics::MAX_NUM_LEGS> allAngles)
+void moveAllLegs(std::array<LegAngles, NUMBER_OF_LEGS> allAngles)
 {
-  for (uint8_t legIndex = 0; legIndex < robot->NUM_LEGS; legIndex++)
+  for (uint8_t legIndex = 0; legIndex < NUMBER_OF_LEGS; legIndex++)
   {
     LegAngles angles = allAngles[legIndex];
     moveOneLeg(legIndex, angles, false);

@@ -38,13 +38,11 @@ void setup()
 
     setupExtraCalibrations();
 
-    robot = new RobotWithKinematics(bodyCenterToLegsCircleRadius, // body radius in mm
-                                    NUMBER_OF_LEGS,               // Number of Legs
-                                    coxaLength,                   // coxa length in mm
-                                    thighLength,                  // thigh length in mm
-                                    shinLength,                   // shin length in mm
-                                    startLegExtend,               // base food extend in mm
-                                    maxStepWidth                  // max step in mm
+    robot = new RobotWithKinematics(NUMBER_OF_LEGS,   // Number of Legs
+                                    maxStepWidth,     // max step in mm
+                                    walkingStepCount, // steps for one walk move
+                                    mainLoopDelay,    // millis between mainloop
+                                    myLegs            // all pre-configured legs
     );
 
     robot->setPose(startBodyHeightOverGround, 0.0, 0.0, 0.0);
@@ -114,7 +112,6 @@ void loop()
     }
 
     previousStepMillis = 0;
-    float legExtend = 170;
 
     float height = fmap(input->leftPoit, 0.0, 1000.0, minHeight, maxHeight);
     float tiltY = fmap(input->leftStickVertical, -100.0, 100.0, -maxTilt, maxTilt);
@@ -150,7 +147,7 @@ void loop()
     }
 
     robot->setWalkDirection(walkX, walkY, rotateBody);
-    robot->setBaseFootExtend(legExtend);
+    robot->setBaseFootExtend(170.0);
     robot->setPose(height, tiltX, tiltY, rotateTorso);
 
     robot->mainLoop();
@@ -165,7 +162,7 @@ void loop()
     // Sonderpose-State-Machine: schreibt ggf. targetPosition[] für die beteiligten Beine
     robot->specialPoseLoop();
 
-    std::array<LegAngles, RobotWithKinematics::MAX_NUM_LEGS> allAngles = robot->calculateAllLegAngles();
+    std::array<LegAngles, NUMBER_OF_LEGS> allAngles = robot->calculateAllLegAngles();
 
     if (robot->isValidPose())
     {
@@ -183,8 +180,6 @@ void loop()
     else
     {
         // Serial.println("leg angles not reachable!!! ");
-
-        
     }
 
     // delay(1);
