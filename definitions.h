@@ -31,6 +31,7 @@ const float thighLength = 120.0;                    // mm
 const float shinLength = 217.0 + 5.5;               // mm // shin + rubber pad
 float startBodyHeightOverGround = 160.0;            // mm
 float startLegExtend = 170.0;                       // mm
+float heightOffset = 0.0;
 
 RobotWithKinematics *robot;
 static RobotLeg myLegs[NUMBER_OF_LEGS] = {
@@ -39,6 +40,7 @@ static RobotLeg myLegs[NUMBER_OF_LEGS] = {
         coxaLength,                   // coxa length in mm
         thighLength,                  // thigh length in mm
         shinLength,                   // shin length in mm
+        heightOffset,                 // offset from center of mass
         startLegExtend,               // distance of first servo axis to foot
         0,                            // degree of first servo from front of robot
         0                             // internal rotation to fix 360 degree offset
@@ -48,6 +50,7 @@ static RobotLeg myLegs[NUMBER_OF_LEGS] = {
         coxaLength,                   // coxa length in mm
         thighLength,                  // thigh length in mm
         shinLength,                   // shin length in mm
+        heightOffset,                 // offset from center of mass
         startLegExtend,               // distance of first servo axis to foot
         72,                           // degree of first servo from front of robot
         -144                          // internal rotation to fix 360 degree offset
@@ -57,6 +60,7 @@ static RobotLeg myLegs[NUMBER_OF_LEGS] = {
         coxaLength,                   // coxa length in mm
         thighLength,                  // thigh length in mm
         shinLength,                   // shin length in mm
+        heightOffset,                 // offset from center of mass
         startLegExtend,               // distance of first servo axis to foot
         144,                          // degree of first servo from front of robot
         72                            // internal rotation to fix 360 degree offset
@@ -66,6 +70,7 @@ static RobotLeg myLegs[NUMBER_OF_LEGS] = {
         coxaLength,                   // coxa length in mm
         thighLength,                  // thigh length in mm
         shinLength,                   // shin length in mm
+        heightOffset,                 // offset from center of mass
         startLegExtend,               // distance of first servo axis to foot
         216,                          // degree of first servo from front of robot
         -72                           // internal rotation to fix 360 degree offset
@@ -75,21 +80,22 @@ static RobotLeg myLegs[NUMBER_OF_LEGS] = {
         coxaLength,                   // coxa length in mm
         thighLength,                  // thigh length in mm
         shinLength,                   // shin length in mm
+        heightOffset,                 // offset from center of mass
         startLegExtend,               // distance of first servo axis to foot
         288,                          // degree of first servo from front of robot
         144                           // internal rotation to fix 360 degree offset
         )};
 
-const uint16_t walkingStepCount = 80;
+const uint16_t walkingStepCount = 70;
 const uint16_t mainLoopDelay = 5;
-const float maxTilt = 20.0;
-const float maxRotation = 25.0;
+const float maxTilt = 26.0;
+const float maxRotation = 30.0;
 const float maxStepWidth = 230.0;
 
 const float minHeight = 170.0; // mm
 const float maxHeight = 285.0; // mm
 
-const float maxRotationBodyOnPoint = 300.0; // mm
+const float maxRotationBodyOnPoint = 260.0; // mm
 
 float waveLegA = 0;
 bool waveLegADirection = true;

@@ -14,7 +14,7 @@ public:
     const float COXA_LENGTH;  // Länge der Coxa (L0)
     const float FEMUR_LENGTH; // Länge des Oberschenkels (L1)
     const float TIBIA_LENGTH; // Länge des Unterschenkels (L2)
-
+    const float HEIGHT_OFFSET; // Abweichung von regulären Position über dem Boden
     float baseFootExtend;
 
     const float rotateCoordinates;
@@ -34,12 +34,14 @@ public:
              float coxaLength,
              float thighLength,
              float shinLength,
+             float heightOffset,
              float baseFootExtend,
              double baseAngleDeg,
              float rotateCoordinates) : BODY_RADIUS(bodyRadius),
                                         COXA_LENGTH(coxaLength),
                                         FEMUR_LENGTH(thighLength),
                                         TIBIA_LENGTH(shinLength),
+                                        HEIGHT_OFFSET(heightOffset),
                                         baseFootExtend(baseFootExtend),
                                         baseAngle(baseAngleDeg * M_PI / 180.0),
                                         rotateCoordinates(rotateCoordinates)
@@ -116,8 +118,8 @@ public:
         coxaBaseX = tempX;
         coxaBaseY = tempY;
 
-        // Verschiebung zur Körperhöhe
-        coxaBaseY += m_pose.height;
+        // Verschiebung zur Körperhöhe mit offset, falls nicht alle Beine auf der selben Ebene montiert sind. 
+        coxaBaseY += m_pose.height + HEIGHT_OFFSET;
     }
 
     /**
