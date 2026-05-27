@@ -29,15 +29,15 @@
 class RobotWithKinematics
 {
 public:
-    uint8_t NUM_LEGS = 5; // Anzahl der Beine
+    const uint8_t NUM_LEGS = 0; // Anzahl der Beine
+    uint8_t NUM_OF_MOVABLE_LEGS = 0; // Anzahl der Beine die maximal gleichzeitig vom Boden gehoben werden dürfen
 private:
     const uint16_t WALKING_STEP_COUNT; // Anzahl der interpolierten Schritte für Bewegungsabläufe
     const uint16_t MAIN_LOOP_DELAY;    // Millis zwischen denen der MainLoop ausgeführt wird.
 
     RobotLeg *legs = nullptr;
 
-    uint8_t currentMovingLegA = 0;
-    uint8_t currentMovingLegB = 0;
+    uint8_t *currentMovingLegs = nullptr; // Indizes der Beine, die aktuell in der Luft sind
     uint16_t walkingStep = 0; // Zwischenschritt Nummer des aktuellen Bewegungsablauf
 
     enum WalkState : uint8_t
@@ -98,7 +98,16 @@ public:
                           MAIN_LOOP_DELAY(mainLoopDelay),
                           legs(legs)
     {
-        // nothing to do here
+        // Bei weniger als 5 Beinen ist nur ein Bein gleichzeitig in der Luft sinnvoll
+        // (sonst kippt der Roboter). Ab 5 Beinen kann die Hälfte gleichzeitig laufen.
+        NUM_OF_MOVABLE_LEGS = (numberOfLegs < 5) ? 1 : numberOfLegs / 2;
+
+        currentMovingLegs = new uint8_t[NUM_OF_MOVABLE_LEGS];
+        const uint8_t spacing = NUM_LEGS / NUM_OF_MOVABLE_LEGS;
+        for (uint8_t i = 0; i < NUM_OF_MOVABLE_LEGS; i++)
+        {
+            currentMovingLegs[i] = (i * spacing) % NUM_LEGS;
+        }
 
         for (uint8_t legIndex = 0; legIndex < NUM_LEGS; legIndex++)
         {
@@ -108,6 +117,26 @@ public:
             Serial.print(legs[legIndex].baseAngle);
             Serial.println("");
         }
+    }
+
+    ~RobotWithKinematics()
+    {
+        delete[] currentMovingLegs;
+    }
+
+    /**
+     * true wenn das angegebene Bein aktuell zum Satz der bewegten Beine gehört.
+     */
+    bool isLegCurrentlyMoving(uint8_t legIndex) const
+    {
+        for (uint8_t i = 0; i < NUM_OF_MOVABLE_LEGS; i++)
+        {
+            if (currentMovingLegs[i] == legIndex)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -172,12 +201,17 @@ public:
                 currentPhase = 0;
             }
 
-            currentMovingLegA += 1;
-            currentMovingLegB = currentMovingLegA + 2;
-            if (currentMovingLegA >= NUM_LEGS)
-                currentMovingLegA -= NUM_LEGS;
-            if (currentMovingLegB >= NUM_LEGS)
-                currentMovingLegB -= NUM_LEGS;
+            // Alle aktuell bewegten Beine um eins weiterrotieren (modulo NUM_LEGS).
+            // Da alle Einträge synchron rotieren, bleibt der ursprünglich gewählte
+            // Abstand zwischen den bewegten Beinen erhalten.
+            for (uint8_t i = 0; i < NUM_OF_MOVABLE_LEGS; i++)
+            {
+                currentMovingLegs[i] += 1;
+                if (currentMovingLegs[i] >= NUM_LEGS)
+                {
+                    currentMovingLegs[i] -= NUM_LEGS;
+                }
+            }
 
             // Zyklus ist an einem sauberen Nullpunkt.
             // Wenn wir gerade am Stoppen sind -> jetzt in Idle wechseln.
@@ -195,8 +229,6 @@ public:
     {
         bool walking = hasWalkInput();
 
-        bool walkWithTwoLegs = currentMovingLegA != currentMovingLegB;
-
         for (uint8_t legIndex = 0; legIndex < NUM_LEGS; legIndex++)
         {
             // Beine, die an der Sonderpose beteiligt sind, NICHT überschreiben.
@@ -206,18 +238,13 @@ public:
                 continue;
             }
 
-            bool isCurrentMovingLeg = (currentMovingLegA == legIndex || currentMovingLegB == legIndex);
+            bool isCurrentMovingLeg = isLegCurrentlyMoving(legIndex);
 
             Vector3 newTarget = walking
-                                    ? legs[legIndex].newTargetPosition(walk_x, walk_y, rotate_Body, walkWithTwoLegs, isCurrentMovingLeg)
+                                    ? legs[legIndex].newTargetPosition(walk_x, walk_y, rotate_Body, NUM_OF_MOVABLE_LEGS, isCurrentMovingLeg)
                                     : legs[legIndex].baseFootPosition;
-            bool isMoving = false;
 
-            if (currentMovingLegA == legIndex || currentMovingLegB == legIndex)
-            {
-                isMoving = true;
-            }
-            legs[legIndex].targetPosition = legs[legIndex].getStepTargetPosition(WALKING_STEP_COUNT, walkingStep, newTarget, isMoving);
+            legs[legIndex].targetPosition = legs[legIndex].getStepTargetPosition(WALKING_STEP_COUNT, walkingStep, newTarget, isCurrentMovingLeg);
         }
     }
 

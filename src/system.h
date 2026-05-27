@@ -170,7 +170,7 @@ void loop()
 
         moveAllLegs(allAngles);
 
-        if (walkX < 1.0 && walkX > -1.0 && walkY < 1.0 && walkY > -1.0 && rotateBody == 0 && height > (minHeight + (maxHeight - minHeight) / 2))
+        if (walkX < 5.0 && walkX > -5.0 && walkY < 5.0 && walkY > -5.0)
         {
             waveWithLeg();
         }

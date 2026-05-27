@@ -222,7 +222,7 @@ public:
         return result;
     }
 
-    Vector3 newTargetPosition(float walk_x, float walk_y, float rotate_Body, bool walkWithTwoLegs, bool isCurrentMovingLeg) const
+    Vector3 newTargetPosition(float walk_x, float walk_y, float rotate_Body, uint8_t numMovingLegs, bool isCurrentMovingLeg) const
     {
         float x = walk_x;
         float y = walk_y;
@@ -236,38 +236,46 @@ public:
 
         Vector3 newTarget = lastTargetPosition;
 
-        if (walkWithTwoLegs)
-        {
-            // Lösung mit 2 beinen in der Luft
+        const float numberOfLegs = static_cast<float>(NUMBER_OF_LEGS);
 
+        if (numMovingLegs == 1)
+        {
+            // Single-Leg-Gangart (z.B. bei nur 4 Beinen, wo zwei in der Luft zum Kippen führen würde).
+            // Bewegt: (N-1)/N, Stehend: 1/N
             if (isCurrentMovingLeg)
             {
-                newTarget.x -= rotated.x * 0.25;
-                newTarget.z -= rotated.z * 0.25;
-            }
-            else
-            {
-                newTarget.x += rotated.x / 6.0;
-                newTarget.z += rotated.z / 6.0;
-            }
-        }
-        else
-        {
-            // Lösung mit nur einem Bein in der Luft
-
-            float numberOfLegs = static_cast<float>(NUMBER_OF_LEGS);
-
-            if (isCurrentMovingLeg)
-            {
-                // Gesamtbewegung durch 5 mal 4 da ein Bein Schreitet während andere nur schieben
                 newTarget.x -= rotated.x / numberOfLegs * (numberOfLegs - 1);
                 newTarget.z -= rotated.z / numberOfLegs * (numberOfLegs - 1);
             }
             else
             {
-                // Gesamtbewegung durch die Anzahl der Beine
                 newTarget.x += rotated.x / numberOfLegs;
                 newTarget.z += rotated.z / numberOfLegs;
+            }
+        }
+        else
+        {
+            // Mehrere Beine in der Luft. Verallgemeinerung der ursprünglichen
+            // 2-Bein-Werte (0.25 und 1/6):
+            //   bewegt  = 1 / (M + 2)
+            //   stehend = M / ((M + 2) * (N - M))
+            // Das hält die Bilanz (Summe über alle Beine = 0) erhalten und reproduziert
+            // für M = 2, N = 5 exakt die alten Werte.
+            const float movingLegs = static_cast<float>(numMovingLegs);
+            const float stationaryLegs = numberOfLegs - movingLegs;
+
+            const float movingFactor = 1.0f / (movingLegs + 2.0f);
+            const float stationaryFactor = movingLegs / ((movingLegs + 2.0f) * stationaryLegs);
+
+            if (isCurrentMovingLeg)
+            {
+                newTarget.x -= rotated.x * movingFactor;
+                newTarget.z -= rotated.z * movingFactor;
+            }
+            else
+            {
+                newTarget.x += rotated.x * stationaryFactor;
+                newTarget.z += rotated.z * stationaryFactor;
             }
         }
 

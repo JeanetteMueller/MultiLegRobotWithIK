@@ -79,23 +79,23 @@ bool performStatus(CRGB color)
     {
         updateAllLed(CRGB::Black);
 
-        if (robot->currentMovingLegA == 0 || robot->currentMovingLegB == 0)
+        if (robot->isLegCurrentlyMoving(0))
         {
             lightUpLed(12, 1, color);
         }
-        else if (robot->currentMovingLegA == 1 || robot->currentMovingLegB == 1)
+        if (robot->isLegCurrentlyMoving(1))
         {
             lightUpLed(16, 1, color);
         }
-        else if (robot->currentMovingLegA == 2 || robot->currentMovingLegB == 2)
+        if (robot->isLegCurrentlyMoving(2))
         {
             lightUpLed(20, 1, color);
         }
-        else if (robot->currentMovingLegA == 3 || robot->currentMovingLegB == 3)
+        if (robot->isLegCurrentlyMoving(3))
         {
             lightUpLed(3, 1, color);
         }
-        else if (robot->currentMovingLegA == 4 || robot->currentMovingLegB == 4)
+        if (robot->isLegCurrentlyMoving(4))
         {
             lightUpLed(7, 1, color);
         }

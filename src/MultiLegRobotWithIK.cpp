@@ -8,6 +8,7 @@
  */
 
 #define NUMBER_OF_LEGS 5
+static_assert(NUMBER_OF_LEGS >= 4, "MultiLegRobotWithIK requires at least 4 legs");
 
 #include "system.h"
 
