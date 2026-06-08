@@ -42,8 +42,7 @@ static RobotLeg myLegs[NUMBER_OF_LEGS] = {
         shinLength,                   // shin length in mm
         heightOffset,                 // offset from center of mass
         startLegExtend,               // distance of first servo axis to foot
-        0,                            // degree of first servo from front of robot
-        0                             // internal rotation to fix 360 degree offset
+        0                             // degree of first servo from front of robot
         ),
     RobotLeg(
         bodyCenterToLegsCircleRadius, // body radius in mm
@@ -52,8 +51,7 @@ static RobotLeg myLegs[NUMBER_OF_LEGS] = {
         shinLength,                   // shin length in mm
         heightOffset,                 // offset from center of mass
         startLegExtend,               // distance of first servo axis to foot
-        72,                           // degree of first servo from front of robot
-        -144                          // internal rotation to fix 360 degree offset
+        72                            // degree of first servo from front of robot
         ),
     RobotLeg(
         bodyCenterToLegsCircleRadius, // body radius in mm
@@ -62,8 +60,7 @@ static RobotLeg myLegs[NUMBER_OF_LEGS] = {
         shinLength,                   // shin length in mm
         heightOffset,                 // offset from center of mass
         startLegExtend,               // distance of first servo axis to foot
-        144,                          // degree of first servo from front of robot
-        72                            // internal rotation to fix 360 degree offset
+        144                           // degree of first servo from front of robot
         ),
     RobotLeg(
         bodyCenterToLegsCircleRadius, // body radius in mm
@@ -72,8 +69,7 @@ static RobotLeg myLegs[NUMBER_OF_LEGS] = {
         shinLength,                   // shin length in mm
         heightOffset,                 // offset from center of mass
         startLegExtend,               // distance of first servo axis to foot
-        216,                          // degree of first servo from front of robot
-        -72                           // internal rotation to fix 360 degree offset
+        216                           // degree of first servo from front of robot
         ),
     RobotLeg(
         bodyCenterToLegsCircleRadius, // body radius in mm
@@ -82,8 +78,7 @@ static RobotLeg myLegs[NUMBER_OF_LEGS] = {
         shinLength,                   // shin length in mm
         heightOffset,                 // offset from center of mass
         startLegExtend,               // distance of first servo axis to foot
-        288,                          // degree of first servo from front of robot
-        144                           // internal rotation to fix 360 degree offset
+        288                           // degree of first servo from front of robot
         )};
 
 const uint16_t walkingStepCount = 70;

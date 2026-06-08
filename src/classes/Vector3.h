@@ -39,42 +39,41 @@ struct Vector3
 
         return Vector3(
             x * c - z * s,
-            0, 
+            0,
             x * s + z * c);
     }
+
+    // Rotation um X-Achse
+    Vector3 rotateX(const Vector3 &v, float angle)
+    {
+        float c = cosf(angle);
+        float s = sinf(angle);
+        return Vector3(
+            v.x,
+            v.y * c - v.z * s,
+            v.y * s + v.z * c);
+    }
+
+    // Rotation um Y-Achse
+    Vector3 rotateY(const Vector3 &v, float angle)
+    {
+        float c = cosf(angle);
+        float s = sinf(angle);
+        return Vector3(
+            v.x * c + v.z * s,
+            v.y,
+            -v.x * s + v.z * c);
+    }
+
+    // Rotation um Z-Achse
+    Vector3 rotateZ(const Vector3 &v, float angle)
+    {
+        float c = cosf(angle);
+        float s = sinf(angle);
+        return Vector3(
+            v.x * c - v.y * s,
+            v.x * s + v.y * c,
+            v.z);
+    }
 };
-
-// Rotation um X-Achse
-Vector3 rotateX(const Vector3 &v, float angle)
-{
-    float c = cosf(angle);
-    float s = sinf(angle);
-    return Vector3(
-        v.x,
-        v.y * c - v.z * s,
-        v.y * s + v.z * c);
-}
-
-// Rotation um Y-Achse
-Vector3 rotateY(const Vector3 &v, float angle)
-{
-    float c = cosf(angle);
-    float s = sinf(angle);
-    return Vector3(
-        v.x * c + v.z * s,
-        v.y,
-        -v.x * s + v.z * c);
-}
-
-// Rotation um Z-Achse
-Vector3 rotateZ(const Vector3 &v, float angle)
-{
-    float c = cosf(angle);
-    float s = sinf(angle);
-    return Vector3(
-        v.x * c - v.y * s,
-        v.x * s + v.y * c,
-        v.z);
-}
-
 #endif

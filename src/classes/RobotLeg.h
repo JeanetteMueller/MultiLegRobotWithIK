@@ -11,13 +11,13 @@ public:
     // Roboter-Geometrie (in mm)
     const float BODY_RADIUS; // Radius des zylindrischen Körpers
 
-    const float COXA_LENGTH;  // Länge der Coxa (L0)
-    const float FEMUR_LENGTH; // Länge des Oberschenkels (L1)
-    const float TIBIA_LENGTH; // Länge des Unterschenkels (L2)
+    const float COXA_LENGTH;   // Länge der Coxa (L0)
+    const float FEMUR_LENGTH;  // Länge des Oberschenkels (L1)
+    const float TIBIA_LENGTH;  // Länge des Unterschenkels (L2)
     const float HEIGHT_OFFSET; // Abweichung von regulären Position über dem Boden
-    float baseFootExtend;
+    float baseFootExtend;      // Abstand zwischen erstem Servo und Fuß. Bei 0 wäre der Fuß direkt unter dem ersten Servo plaziert
 
-    const float rotateCoordinates;
+    const float rotateCoordinates; // wird im Konstruktor aus baseAngle berechnet (-2 * baseAngle, Grad)
 
     const double baseAngle; // Basis-Winkel der Beine (72° versetzt)
 
@@ -36,15 +36,18 @@ public:
              float shinLength,
              float heightOffset,
              float baseFootExtend,
-             double baseAngleDeg,
-             float rotateCoordinates) : BODY_RADIUS(bodyRadius),
-                                        COXA_LENGTH(coxaLength),
-                                        FEMUR_LENGTH(thighLength),
-                                        TIBIA_LENGTH(shinLength),
-                                        HEIGHT_OFFSET(heightOffset),
-                                        baseFootExtend(baseFootExtend),
-                                        baseAngle(baseAngleDeg * M_PI / 180.0),
-                                        rotateCoordinates(rotateCoordinates)
+             double baseAngleDeg) : BODY_RADIUS(bodyRadius),
+                                    COXA_LENGTH(coxaLength),
+                                    FEMUR_LENGTH(thighLength),
+                                    TIBIA_LENGTH(shinLength),
+                                    HEIGHT_OFFSET(heightOffset),
+                                    baseFootExtend(baseFootExtend),
+                                    baseAngle(baseAngleDeg * M_PI / 180.0),
+
+                                    // rotateCoordinates dreht den Lauf-Befehlsvektor pro Bein und
+                                    // ergibt sich immer aus -2 * baseAngle (in Grad). Frueher ein
+                                    // eigener Parameter, jetzt berechnet, damit beide nie auseinanderlaufen.
+                                    rotateCoordinates(-2.0f * baseAngleDeg)
     {
         float footRadius = BODY_RADIUS + baseFootExtend; // Abstand vom Zentrum
 
@@ -65,12 +68,6 @@ public:
      */
     LegAngles calculateLegAngles(BodyPose m_pose) const
     {
-        LegAngles result;
-        result.valid = false;
-        result.coxa = 0.0;
-        result.femur = 0.0;
-        result.tibia = 0.0;
-
         const float baseLegAngle = baseAngle;
         const float legAngleWithRot = baseLegAngle + m_pose.rotY;
 
@@ -89,8 +86,8 @@ public:
         const float footZ = targetPosition.z;
 
         // 3-DOF Inverse Kinematik berechnen
-        result = solveIK3DOF(coxaBaseX, coxaBaseY, coxaBaseZ,
-                             footX, footY, footZ, legAngleWithRot);
+        LegAngles result = solveIK3DOF(coxaBaseX, coxaBaseY, coxaBaseZ,
+                                       footX, footY, footZ, legAngleWithRot);
 
         return result;
     }
@@ -118,7 +115,7 @@ public:
         coxaBaseX = tempX;
         coxaBaseY = tempY;
 
-        // Verschiebung zur Körperhöhe mit offset, falls nicht alle Beine auf der selben Ebene montiert sind. 
+        // Verschiebung zur Körperhöhe mit offset, falls nicht alle Beine auf der selben Ebene montiert sind.
         coxaBaseY += m_pose.height + HEIGHT_OFFSET;
     }
 
@@ -194,6 +191,7 @@ public:
         if (legPlaneDist > FEMUR_LENGTH + TIBIA_LENGTH ||
             legPlaneDist < fabsf(FEMUR_LENGTH - TIBIA_LENGTH))
         {
+            // Serial.println(" WINKEL IST NICHT ERREICHBAR ");
             return result; // Nicht erreichbar
         }
 

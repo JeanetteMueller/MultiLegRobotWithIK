@@ -13,6 +13,8 @@
  * Datum: 2025
  */
 
+static_assert(NUMBER_OF_LEGS >= 4, "MultiLegRobotWithIK requires at least 4 legs");
+
 #ifndef RobotWithKinematics_H
 #define RobotWithKinematics_H
 
