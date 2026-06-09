@@ -6,7 +6,7 @@ Each leg is an independent object with its own geometry, mounting position and h
 
 The library only **computes joint angles**. Driving servos, reading a remote control and handling sensors is left to your sketch, which keeps the library small and hardware‑independent.
 
-> Companion to the [original 5‑legged build](https://github.com/JeanetteMueller/MultiLegRobotWithIK). See the Instagram reel linked from the repository for it in motion.
+> Companion to the [original 5‑legged build](https://github.com/JeanetteMueller/Rocky_MK1). See the Instagram reel linked from the repository for it in motion.
 
 ## Features
 
