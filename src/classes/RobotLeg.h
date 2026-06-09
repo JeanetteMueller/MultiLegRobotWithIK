@@ -3,11 +3,16 @@
 #define RobotLeg_H
 
 #include "Vector3.h"
+#include "LegLimits.h"
 
 class RobotLeg
 {
 
 public:
+    // Erlaubte Gelenk-Limits dieses Beins (in Grad). Werden in der definitions.h
+    // gesetzt; Default ist weit (±180°), damit nichts ungewollt blockiert.
+    LegLimits legLimits;
+
     // Roboter-Geometrie (in mm)
     const float BODY_RADIUS; // Radius des zylindrischen Körpers
 
@@ -36,7 +41,9 @@ public:
              float shinLength,
              float heightOffset,
              float baseFootExtend,
-             double baseAngleDeg) : BODY_RADIUS(bodyRadius),
+             double baseAngleDeg,
+             LegLimits legLimits = LegLimits()) : legLimits(legLimits),
+                                    BODY_RADIUS(bodyRadius),
                                     COXA_LENGTH(coxaLength),
                                     FEMUR_LENGTH(thighLength),
                                     TIBIA_LENGTH(shinLength),
@@ -221,7 +228,7 @@ public:
         result.coxa = coxaAngle;
         result.femur = femurAngle;
         result.tibia = tibiaAngle;
-        result.valid = result.allAnglesInLimit();
+        result.valid = result.allAnglesInLimit(legLimits);
 
         return result;
     }

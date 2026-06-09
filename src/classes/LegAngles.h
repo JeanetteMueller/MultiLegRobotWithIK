@@ -10,6 +10,8 @@
 #ifndef LegAngles_H
 #define LegAngles_H
 
+#include "LegLimits.h"
+
 // Struktur für die 3 Gelenkwinkel eines Beins (in Radiant)
 struct LegAngles
 {
@@ -25,7 +27,9 @@ struct LegAngles
     double femurDeg() const { return femur * 180.0 / M_PI; }
     double tibiaDeg() const { return tibia * 180.0 / M_PI; }
 
-    bool allAnglesInLimit() const
+    // Prüft, ob alle 3 Gelenkwinkel innerhalb der übergebenen Limits liegen.
+    // Die Limits werden pro Bein in der definitions.h gesetzt (siehe LegLimits).
+    bool allAnglesInLimit(const LegLimits &limits) const
     {
         bool ok = true;
 
@@ -33,35 +37,31 @@ struct LegAngles
         float lift = femurDeg();
         float knee = tibiaDeg();
 
-        float limit_swing = 65;
-        float limit_lift = 130;
-        float limit_knee = 180-40;
-
-        if (swing > limit_swing || swing < -limit_swing || debug)
+        if (!limits.coxa.contains(swing) || debug)
         {
             Serial.print(" swing not in limit: ");
             Serial.print(swing);
-            if (swing > limit_swing || swing < -limit_swing)
+            if (!limits.coxa.contains(swing))
             {
                 ok = false;
             }
         }
 
-        if (lift > limit_lift || lift < -limit_lift || debug)
+        if (!limits.femur.contains(lift) || debug)
         {
             Serial.print(" lift not in limit: ");
             Serial.print(lift);
-            if (lift > limit_lift || lift < -limit_lift)
+            if (!limits.femur.contains(lift))
             {
                 ok = false;
             }
         }
 
-        if (knee > limit_knee || knee < -limit_knee || debug)
+        if (!limits.tibia.contains(knee) || debug)
         {
             Serial.print(" knee not in limit: ");
             Serial.print(knee);
-            if (knee > limit_knee || knee < -limit_knee)
+            if (!limits.tibia.contains(knee))
             {
                 ok = false;
             }
