@@ -1,0 +1,43 @@
+#######################################
+# Syntax Coloring Map MultiLegRobotWithIK
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+RobotWithKinematics	KEYWORD1
+RobotLeg	KEYWORD1
+BodyPose	KEYWORD1
+LegAngles	KEYWORD1
+Vector3	KEYWORD1
+InputValues	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+applyControls	KEYWORD2
+mainLoop	KEYWORD2
+prepareTargetPositions	KEYWORD2
+specialPoseLoop	KEYWORD2
+calculateAllLegAngles	KEYWORD2
+doSpecialPose	KEYWORD2
+setPose	KEYWORD2
+setWalkDirection	KEYWORD2
+setBaseFootExtend	KEYWORD2
+setBodyShiftFactor	KEYWORD2
+isValidPose	KEYWORD2
+isLegCurrentlyMoving	KEYWORD2
+calculateLegAngles	KEYWORD2
+getMaxReach	KEYWORD2
+getMinReach	KEYWORD2
+coxaDeg	KEYWORD2
+femurDeg	KEYWORD2
+tibiaDeg	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
+NUMBER_OF_LEGS	LITERAL1

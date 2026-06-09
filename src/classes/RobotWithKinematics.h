@@ -99,10 +99,10 @@ public:
         uint16_t walkingStepCount,
         uint16_t mainLoopDelay,
         RobotLeg *legs) : NUM_LEGS(numberOfLegs),
-                          maxStepWidth(maxStepWidth),
                           WALKING_STEP_COUNT(walkingStepCount),
                           MAIN_LOOP_DELAY(mainLoopDelay),
-                          legs(legs)
+                          legs(legs),
+                          maxStepWidth(maxStepWidth)
     {
         // Bei weniger als 5 Beinen ist nur ein Bein gleichzeitig in der Luft sinnvoll
         // (sonst kippt der Roboter). Ab 5 Beinen kann die Hälfte gleichzeitig laufen.

@@ -1,129 +1,220 @@
-# Multi-leg Robot with Inverse Kinematics
+# MultiLegRobotWithIK
 
-A DIY walking robot with a configurable number of legs, fully 3D-printed and powered by an ESP32 microcontroller.
+An Arduino/ESP32 library for the **inverse kinematics and gait control of a walking robot with a configurable number of 3‑DOF legs** — four legs or more.
 
-Have a look at
+Each leg is an independent object with its own geometry, mounting position and height offset, so you are **not limited to symmetric layouts**. Build a four‑legged scout, a five‑legged pentapod, a classic hexapod, a symmetric octopod, or something deliberately asymmetric with longer front legs and unusual spacing. The kinematics, gait planning and pose system all read each leg's parameters directly, so asymmetric builds work without any special‑case code.
 
-[![Instagram Post](./images/instagram_photo_1.png)](https://www.instagram.com/reel/DXeBLnWDbUL/?igsh=MTJqa2dneTdlbXB5dA==)
+The library only **computes joint angles**. Driving servos, reading a remote control and handling sensors is left to your sketch, which keeps the library small and hardware‑independent.
 
-## What is This?
+> Companion to the [original 5‑legged build](https://github.com/JeanetteMueller/MultiLegRobotWithIK). See the Instagram reel linked from the repository for it in motion.
 
-This is a multi-legged walking robot designed to support **any leg count and any leg layout** you can imagine. Each leg is its own configurable object — its position around the body, its orientation, and its segment lengths can all be set individually. That means you are not limited to a symmetric pentapod or a classic hexapod: you can build a four-legged scout, a perfectly symmetric octopod, or something deliberately asymmetric with longer front legs, shorter back legs, or unusual angular spacing.
+## Features
 
-Every leg has three joints driven by three servo motors — Coxa (hip swing), Femur (hip lift), and Tibia (knee). All legs are coordinated so the robot can walk, turn, and perform gestures.
+- **Any leg count ≥ 4** and any angular layout — symmetric or asymmetric.
+- **Per‑leg geometry:** body radius, coxa/femur/tibia lengths, mounting angle, height offset and foot extension are set individually for every leg.
+- **3‑DOF inverse kinematics** per leg (coxa hip‑swing, femur hip‑lift, tibia knee) using the law of cosines, with automatic reachability and joint‑limit checks.
+- **Cyclic gait generator** that adapts to the leg count: one leg lifts at a time for ≤ 4 legs (more stable), half the legs for ≥ 5.
+- **Body pose control:** height, pitch, roll and yaw — feet stay planted while the body moves.
+- **Body‑shift balancing** for four‑legged robots: the centre of mass slides over the support triangle of the standing legs.
+- **Scripted "special poses"** — a pair of legs leaves the gait cycle, moves to a custom position, holds, and returns (waving, greeting, gestures).
+- **No external dependencies.** Header‑only, just the Arduino core and the STL.
 
-## Asymmetric Robots Are a First-Class Feature
+## Installation
 
-The legs are no longer assumed to be evenly distributed. When constructing the robot, you pass in an array of `RobotLeg` objects, and each one gets its own parameters:
+### Arduino IDE
 
-```cpp
-static RobotLeg myLegs[NUMBER_OF_LEGS] = {
-    RobotLeg(bodyRadius, coxaLength, femurLength, tibiaLength,
-             baseFootExtend,     // distance from first servo axis to foot
-             baseAngleDeg,       // where this leg sits on the body (degrees)
-             rotationOffset),    // how the leg is mounted (degrees)
-    // ... one entry per leg, each fully independent
-};
+1. Download this repository as a ZIP.
+2. *Sketch → Include Library → Add .ZIP Library…* and select it.
+3. Open *File → Examples → MultiLegRobotWithIK → BasicWalk*.
+
+### PlatformIO
+
+Add the library to your `platformio.ini`:
+
+```ini
+[env:esp32dev]
+platform = espressif32
+board = esp32dev
+framework = arduino
+lib_deps =
+    https://github.com/JeanetteMueller/MultiLegRobotWithIK.git
 ```
 
-This unlocks designs like:
+## ⚠️ Required: define `NUMBER_OF_LEGS`
 
-- **Spider-style asymmetry:** longer reach in front, shorter rear legs
-- **Custom layouts:** legs clustered on one side, or grouped in pairs
-- **Mixed geometries:** different femur/tibia lengths per leg for specialized roles
-- **Non-uniform spacing:** legs at any angle around the body, not just `360° / N`
+The number of legs is a **compile‑time constant** (it sizes the angle array and a static assertion). You **must** define it *before* including the library, and it must match the count you pass to the constructor:
 
-The inverse kinematics, gait planning, and special-pose system all read each leg's parameters directly, so an asymmetric build behaves correctly without any special-case code.
+```cpp
+#define NUMBER_OF_LEGS 5
+#include <MultiLegRobotWithIK.h>
+```
 
-## Design
+If you forget, the library stops with a clear `#error` instead of a cryptic failure.
 
-**Body:** Round body with the legs arranged around the perimeter. In the default five-legged build, the body has a radius of approximately 104 mm (center to leg attachment point) and the legs are placed at 72° intervals — but neither the count nor the spacing is hard-wired into the math.
+## Quick start
 
-**Legs:** Each leg has three segments:
+```cpp
+#define NUMBER_OF_LEGS 5
+#include <MultiLegRobotWithIK.h>
 
-- **Coxa** — 54 mm, the short hip segment that swings the leg sideways
-- **Femur** — 120 mm, the upper leg segment lifted by the second servo
-- **Tibia** — 222.5 mm (217 mm shin + 5.5 mm rubber foot pad), the lower leg segment moved by the knee
+// One RobotLeg per leg. Here: 5 legs evenly spaced at 72° intervals.
+//          RobotLeg(bodyRadius, coxa, femur, tibia, heightOffset, footExtend, baseAngleDeg)
+RobotLeg legs[NUMBER_OF_LEGS] = {
+    RobotLeg(104.175, 54, 120, 222.5, 0, 170,   0),
+    RobotLeg(104.175, 54, 120, 222.5, 0, 170,  72),
+    RobotLeg(104.175, 54, 120, 222.5, 0, 170, 144),
+    RobotLeg(104.175, 54, 120, 222.5, 0, 170, 216),
+    RobotLeg(104.175, 54, 120, 222.5, 0, 170, 288),
+};
 
-**Brain:** An ESP32 microcontroller handles all motion calculations, drives the servos via a serial bus, and reads input from the remote control receiver.
+RobotWithKinematics *robot;
 
-**Shell:** All structural parts are 3D-printed.
+void setup() {
+    Serial.begin(115200);
+    robot = new RobotWithKinematics(
+        NUMBER_OF_LEGS, // number of legs (must match the macro)
+        230.0,          // max step width (mm)
+        70,             // interpolation steps per gait phase
+        5,              // ms between gait ticks
+        legs);          // the pre-configured legs
+    robot->setPose(200.0, 0, 0, 0); // height, tiltX, tiltZ, yaw (deg)
+}
 
-## How Does It Move?
+void loop() {
+    // Feed control inputs (normally from a joystick / RC receiver).
+    robot->applyControls(
+        0.0,   115.0, 0.0, // walk X (strafe), walk Y (forward), rotate (deg)
+        170.0,             // foot extension (mm)
+        200.0,             // body height (mm)
+        0.0, 0.0, 0.0);    // body tilt X, tilt Z, yaw (deg)
 
-The robot uses **inverse kinematics** — instead of manually setting angles for each servo, you define where a foot should be in 3D space, and the required joint angles are calculated automatically using trigonometry (law of cosines). This keeps the feet planted on the ground even when the body height, tilt, or yaw changes.
+    // Advance the state machines — always in this order, once per loop.
+    robot->mainLoop();
+    robot->prepareTargetPositions();
+    robot->specialPoseLoop();
 
-When walking, the robot lifts one or two legs at a time while the remaining legs support the body and push it forward. At low speed, only one leg lifts per phase (more stable). At higher speed, two legs lift simultaneously (faster but less stable). The gait runs as a cyclic phase pattern that adapts automatically to the number of legs in the configuration.
+    // Solve IK for every leg.
+    auto angles = robot->calculateAllLegAngles();
 
-In addition to walking, the robot supports **special poses** — predefined choreographed movements where a pair of legs leaves the gait cycle, moves into a custom position, holds it, and returns to the standing pose. This is used for waving, greeting gestures, or any other interactive behavior.
+    for (uint8_t i = 0; i < NUMBER_OF_LEGS; i++) {
+        if (angles[i].valid) {
+            float coxa  = angles[i].coxaDeg();   // hip swing  (degrees)
+            float femur = angles[i].femurDeg();  // hip lift    (degrees)
+            float tibia = angles[i].tibiaDeg();  // knee        (degrees)
+            // → map these to your servos and write them
+        }
+    }
+    delay(5);
+}
+```
 
-## Controls
+See **`examples/BasicWalk`** for a complete, runnable version.
 
-The robot uses a **FlySky receiver (10 channel)** to connect to a FlySky transmitter. All inputs are transmitted to the ESP32 in real time over the IBUS protocol.
+## The per‑loop pipeline
 
-Inputs include:
+`RobotWithKinematics` is a state machine, not a one‑shot solver. Call its methods **in this order, once per loop**:
 
-- **Right stick:** walk direction and speed (or steering, depending on mode)
-- **Left stick:** body tilt (pitch and roll)
-- **Left potentiometer:** body height
-- **Right potentiometer:** body yaw rotation
-- **Switches:** mode switch (vehicle vs. strafing), special poses, gesture triggers
+| Step | Call | What it does |
+|------|------|--------------|
+| 1 | `applyControls(...)` | Latch walk direction, foot extension and body pose. Values are only taken at a clean cycle boundary, so targets never change mid‑step. |
+| 2 | `mainLoop()` | Advance the gait clock and rotate which legs are currently lifted. |
+| 3 | `prepareTargetPositions()` | Compute each leg's interpolated foot position for this step. |
+| 4 | `specialPoseLoop()` | Tick the special‑pose state machine (overrides its two legs). |
+| 5 | `calculateAllLegAngles()` | Run inverse kinematics on every leg → `std::array<LegAngles, NUMBER_OF_LEGS>`. |
 
-A switch on the transmitter toggles between two control schemes:
+## API overview
 
-- **Vehicle mode:** forward/backward + steering, like a car
-- **Strafing mode:** full directional control, like a tank or RC drone
+### `RobotLeg`
 
-## Specs
+One leg's geometry and per‑leg math. Construct one per leg:
+
+```cpp
+RobotLeg(float bodyRadius,    // centre of body → this leg's first servo (mm)
+         float coxaLength,    // hip segment length (mm)
+         float thighLength,   // femur length (mm)
+         float shinLength,    // tibia length, incl. foot pad (mm)
+         float heightOffset,  // vertical offset of this leg's hip (mm)
+         float baseFootExtend,// how far the foot rests out from the body (mm)
+         double baseAngleDeg);// where the leg sits around the body (degrees)
+```
+
+`baseAngleDeg` is the single source of truth for a leg's orientation; the command‑vector rotation per leg is derived from it automatically. `getMaxReach()` / `getMinReach()` return the leg's reach limits.
+
+### `RobotWithKinematics`
+
+Owns the gait and pose state. Key methods:
+
+- `applyControls(walkX, walkY, rotateDeg, footExtend, height, tiltXDeg, tiltZDeg, yawDeg)` — set everything at once (latched on a cycle boundary).
+- `setWalkDirection(x, y, r)`, `setBaseFootExtend(mm)`, `setPose(height, tiltXDeg, tiltZDeg, yawDeg)` — individual setters.
+- `setBodyShiftFactor(factor)` — fraction of `BODY_RADIUS` the centre of mass slides toward the opposite leg while walking (four‑legged robots only; `0` = off).
+- `mainLoop()`, `prepareTargetPositions()`, `specialPoseLoop()` — the per‑loop pipeline.
+- `calculateAllLegAngles()` → `std::array<LegAngles, NUMBER_OF_LEGS>`.
+- `isValidPose()` — `true` if every leg can reach its current target.
+- `doSpecialPose(pose)` — see below.
+
+### `LegAngles`
+
+Result of the IK for one leg:
+
+- `coxa`, `femur`, `tibia` — angles in **radians**; `coxaDeg()`, `femurDeg()`, `tibiaDeg()` for degrees.
+- `valid` — `false` if the target is unreachable or a joint limit is exceeded (swing ±65°, lift ±130°, knee ±140°).
+
+### `BodyPose`
+
+The body setpoint (height in mm, tilt/yaw in radians; build it from degrees with `BodyPose::fromDegrees(...)`). You normally set it through `setPose(...)`.
+
+### `Vector3`
+
+A small 3D vector helper (`x` right, `y` up, `z` forward/back) used for positions and rotations.
+
+## Coordinate system & conventions
+
+- **X/Z is the ground plane, Y is up.** Foot targets live on the ground; the body floats `height + heightOffset` above each hip.
+- A leg's `baseAngleDeg` defines where it is mounted around the body — use any angles you like, not just `360° / N`.
+- The IK projects the foot into each leg's radial/tangential frame: the coxa swings only to correct sideways offset, then femur and tibia are solved as a 2D arm (knee bends outward).
+
+## Gait
+
+When walking, some legs lift and swing forward while the rest stay planted and push the body. The number of simultaneously lifted legs adapts to the configuration:
+
+- **≤ 4 legs:** one leg at a time (avoids tipping). For four legs, enable `setBodyShiftFactor(...)` so the body leans onto the support triangle.
+- **≥ 5 legs:** half the legs (`N / 2`) lift together for a faster gait.
+
+The foot push factors are balanced so the net translation over all legs is zero — the body does not drift sideways.
+
+## Special poses
+
+A "special pose" lets a pair of legs leave the gait cycle, move into a custom position, hold it, then return — useful for waving or greeting. Call `doSpecialPose(pose)` **every loop** while the gesture should stay active; when you stop calling it, the legs animate back to their home position automatically.
+
+## Mapping angles to servos
+
+The library outputs angles in degrees per joint. Your sketch is responsible for:
+
+1. Converting each angle to your servo's units (e.g. serial‑bus position counts or a PWM pulse width).
+2. Applying per‑servo calibration / direction / offset.
+3. Writing the values to the bus.
+
+The original build drives 3 × *N* serial‑bus servos (ST3020 / SCServo) over a single UART and takes input from a FlySky RC receiver over IBUS, but neither is required by this library.
+
+## Reference build (5‑leg pentapod)
 
 | | |
 |---|---|
-| **Legs** | Configurable (default build: 5) |
-| **Servos per leg** | 3 (Coxa, Femur, Tibia) |
-| **Microcontroller** | ESP32 |
-| **Coxa length** | 54 mm |
-| **Femur length** | 120 mm (default, per-leg configurable) |
-| **Tibia length** | 222.5 mm (default, per-leg configurable) |
-| **Body radius** | ~104 mm (default, center to leg attachment) |
-| **Body height range** | 170–285 mm |
-| **Max step width** | 230 mm |
-| **Max body tilt** | ±20° |
-| **Max body rotation (yaw)** | ±25° |
-| **Communication** | FlySky receiver (IBUS) |
-| **Servo bus** | Serial (SCServo) |
-| **Shell** | 3D-printed |
-| **Kinematics** | Inverse kinematics (law of cosines) |
-| **Language** | C++ (Arduino framework) |
+| Legs | 5 (configurable, ≥ 4) |
+| Servos per leg | 3 (coxa, femur, tibia) |
+| Microcontroller | ESP32 |
+| Coxa length | 54 mm |
+| Femur length | 120 mm |
+| Tibia length | 222.5 mm (217 mm shin + 5.5 mm foot pad) |
+| Body radius | ~104 mm (centre → leg) |
+| Body height range | 170–285 mm |
+| Max step width | 230 mm |
+| Language | C++ (Arduino framework) |
 
-## Future Plans
+## License
 
-- **Sensors:** IMU for automatic body leveling on uneven terrain, foot contact sensors for adaptive gait
-- **Reinforcement learning:** Training an AI-driven gait, first in simulation (MuJoCo / PyBullet), then transferring to the real robot
-- **Range sensor:** Front-facing ToF sensor for obstacle detection
+Not yet licensed. Until a license is added, default copyright applies — ask the author before redistributing.
 
-## Build Notes
+## Author
 
-### Stuff to Buy
-
-- 3 × leg-count ST3020 serial servos (15 for the default 5-leg build)
-- Serial servo controller board
-- ESP32 dev board
-- FlySky 6/10 channel transmitter + receiver
-
-### 3D Printing
-
-Inside the STL folder you will find files for 3D printing. The end of each filename indicates how many copies to print — for example, a file ending in `x5` needs to be printed five times.
-
-### Prepare the Servos
-
-Use my programmer to assign the servo IDs (1 to N):
-[https://github.com/JeanetteMueller/SerialServoIdProgrammer](https://github.com/JeanetteMueller/SerialServoIdProgrammer)
-
-### Required Libraries
-
-- [FlyskyIBUS](https://github.com/derdoktor667/FlyskyIBUS)
-- [SCServo](https://github.com/workloads/scservo)
-
-## License & Contact
-
-This is a personal hobby project.
+Jeanette Müller — the inverse‑kinematics math was developed together with Claude.ai.

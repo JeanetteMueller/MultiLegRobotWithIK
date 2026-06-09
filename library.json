@@ -1,0 +1,31 @@
+{
+  "name": "MultiLegRobotWithIK",
+  "version": "0.1.0",
+  "description": "Inverse kinematics and gait control for walking robots with 4 or more 3-DOF legs. Each leg is an independent object with its own geometry and mounting angle, so symmetric and asymmetric layouts (quadruped, pentapod, hexapod, octopod, ...) work without special-case code.",
+  "keywords": "robot, walking-robot, hexapod, pentapod, quadruped, octopod, inverse-kinematics, gait, servo, esp32",
+  "authors": [
+    {
+      "name": "Jeanette Müller",
+      "email": "themaverick@themaverick.de",
+      "maintainer": true
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JeanetteMueller/MultiLegRobotWithIK.git"
+  },
+  "homepage": "https://github.com/JeanetteMueller/MultiLegRobotWithIK",
+  "frameworks": "arduino",
+  "platforms": "espressif32",
+  "headers": "MultiLegRobotWithIK.h",
+  "export": {
+    "include": [
+      "src",
+      "examples",
+      "library.properties",
+      "library.json",
+      "keywords.txt",
+      "README.md"
+    ]
+  }
+}

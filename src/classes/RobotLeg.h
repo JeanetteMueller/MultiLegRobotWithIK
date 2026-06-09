@@ -42,12 +42,13 @@ public:
                                     TIBIA_LENGTH(shinLength),
                                     HEIGHT_OFFSET(heightOffset),
                                     baseFootExtend(baseFootExtend),
-                                    baseAngle(baseAngleDeg * M_PI / 180.0),
 
                                     // rotateCoordinates dreht den Lauf-Befehlsvektor pro Bein und
                                     // ergibt sich immer aus -2 * baseAngle (in Grad). Frueher ein
                                     // eigener Parameter, jetzt berechnet, damit beide nie auseinanderlaufen.
-                                    rotateCoordinates(-2.0f * baseAngleDeg)
+                                    // (vor baseAngle initialisiert, da frueher deklariert)
+                                    rotateCoordinates(-2.0f * baseAngleDeg),
+                                    baseAngle(baseAngleDeg * M_PI / 180.0)
     {
         float footRadius = BODY_RADIUS + baseFootExtend; // Abstand vom Zentrum
 
@@ -143,7 +144,6 @@ public:
 
         // Vektor von Coxa-Basis zu Fuß
         const float deltaX = footX - coxaBaseX;
-        const float deltaY = footY - coxaBaseY;
         const float deltaZ = footZ - coxaBaseZ;
 
         // Basis-Richtung (radial nach außen)
