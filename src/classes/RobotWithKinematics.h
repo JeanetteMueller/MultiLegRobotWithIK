@@ -85,6 +85,10 @@ private:
 
     BodyPose m_pose;
 
+    // Quotient, wie weit das Koerperzentrum beim Laufen zum gegenueberliegenden
+    // Bein verschoben wird (Anteil von BODY_RADIUS). 0 = aus. Wirkt nur bei 4 Beinen.
+    float bodyShiftFactor = 0.0f;
+
 public:
     /**
      * Konstruktor
@@ -231,6 +235,9 @@ public:
     {
         bool walking = hasWalkInput();
 
+        // Koerperzentrum zum Gegenbein verschieben (nur 4-Bein-Roboter).
+        updateBodyShift();
+
         for (uint8_t legIndex = 0; legIndex < NUM_LEGS; legIndex++)
         {
             // Beine, die an der Sonderpose beteiligt sind, NICHT überschreiben.
@@ -255,20 +262,20 @@ public:
      */
     void setBaseFootExtend(float newValue)
     {
-        if (currentPhase == 0 && walkingStep == 0)
+        for (uint8_t i = 0; i < NUM_LEGS; i++)
         {
-            for (uint8_t i = 0; i < NUM_LEGS; i++)
-            {
-                float footRadius = legs[i].BODY_RADIUS + newValue; // Abstand vom Basis Servo
-                float angle = i * (2.0 * M_PI / NUM_LEGS);
+            float footRadius = legs[i].BODY_RADIUS + newValue; // Abstand vom Basis Servo
+            // Home-Position am ECHTEN Montagewinkel des Beins (nicht gleichmaessig
+            // i*360/N), sonst stimmen Fuss- und Hueft-Winkel bei ungleichmaessig
+            // verteilten Beinen nicht ueberein und die Coxa schwenkt zur Seite.
+            float angle = legs[i].baseAngle;
 
-                legs[i].baseFootPosition = Vector3(
-                    cosf(angle) * footRadius,
-                    0.0, // Boden
-                    sinf(angle) * footRadius);
+            legs[i].baseFootPosition = Vector3(
+                cosf(angle) * footRadius,
+                0.0, // Boden
+                sinf(angle) * footRadius);
 
-                legs[i].baseFootExtend = newValue;
-            }
+            legs[i].baseFootExtend = newValue;
         }
     }
 
@@ -286,15 +293,98 @@ public:
      */
     void setWalkDirection(float x, float y, float r)
     {
+        if (walk_x != x || walk_y != y || rotate_Body != r)
+        {
+            walk_x = x;
+            walk_y = y;
+            rotate_Body = r;
+        }
+    }
+
+    /**
+     * Setzt Laufrichtung, Fuss-Abstand und Koerper-Pose in einem Aufruf.
+     * Die Parameter werden nur an einem sauberen Zyklus-Nullpunkt
+     * (currentPhase == 0 && walkingStep == 0) uebernommen, damit sich
+     * Ziele nicht mitten im Schritt aendern.
+     */
+    void applyControls(float walkX, float walkY, float rotateBody,
+                       float footExtend,
+                       float height, float tiltXDeg, float tiltZDeg, float rotYDeg)
+    {
         if (currentPhase == 0 && walkingStep == 0)
         {
-            if (walk_x != x || walk_y != y || rotate_Body != r)
-            {
-                walk_x = x;
-                walk_y = y;
-                rotate_Body = r;
-            }
+            setWalkDirection(walkX, walkY, rotateBody);
+            setBaseFootExtend(footExtend);
+            setPose(height, tiltXDeg, tiltZDeg, rotYDeg);
         }
+    }
+
+    /**
+     * Setzt den Quotienten fuer die Koerper-Schwerpunktverschiebung beim Laufen.
+     * Anteil von BODY_RADIUS (z.B. 0.3). 0 = aus. Wirkt nur bei 4-beinigen Robotern.
+     */
+    void setBodyShiftFactor(float factor)
+    {
+        bodyShiftFactor = factor;
+    }
+
+    /**
+     * Verschiebt das Koerperzentrum beim Laufen kreisfoermig zum jeweils
+     * gegenueberliegenden Bein des aktuell angehobenen Beins. Damit wandert der
+     * Schwerpunkt (Akku in der Mitte) in das Stuetzdreieck der 3 stehenden Beine,
+     * sodass der Roboter beim Anheben eines Beins nicht in dessen Richtung kippt.
+     *
+     * Nur fuer 4-beinige Roboter (Single-Leg-Gangart). Bei mehr Beinen passiert nichts.
+     */
+    void updateBodyShift()
+    {
+        if (NUM_LEGS != 4 || bodyShiftFactor == 0.0f || !hasWalkInput())
+        {
+            m_pose.bodyShiftX = 0.0f;
+            m_pose.bodyShiftZ = 0.0f;
+            return;
+        }
+
+        const uint8_t m = currentMovingLegs[0]; // aktuell angehobenes Bein
+        const uint8_t prevLeg = (m + NUM_LEGS - 1) % NUM_LEGS;
+        const uint8_t nextLeg = (m + 1) % NUM_LEGS;
+
+        // Richtung jeweils zum gegenueberliegenden Bein (echter baseAngle, da die
+        // Beine ungleichmaessig verteilt sein koennen).
+        const float oppPrev = legs[(prevLeg + 2) % NUM_LEGS].baseAngle;
+        const float oppCurr = legs[(m + 2) % NUM_LEGS].baseAngle;
+        const float oppNext = legs[(nextLeg + 2) % NUM_LEGS].baseAngle;
+
+        // Fortschritt im aktuellen Zyklus (0..1). In der Mitte (t=0.5) ist das Bein
+        // maximal angehoben -> dort soll der Koerper genau zum Gegenbein zeigen.
+        const float t = static_cast<float>(walkingStep) / static_cast<float>(WALKING_STEP_COUNT);
+
+        float angle;
+        if (t < 0.5f)
+        {
+            angle = lerpAngleRad(oppPrev, oppCurr, t + 0.5f);
+        }
+        else
+        {
+            angle = lerpAngleRad(oppCurr, oppNext, t - 0.5f);
+        }
+
+        const float shiftDistance = bodyShiftFactor * legs[0].BODY_RADIUS;
+        m_pose.bodyShiftX = shiftDistance * cosf(angle);
+        m_pose.bodyShiftZ = shiftDistance * sinf(angle);
+    }
+
+    /**
+     * Interpoliert zwischen zwei Winkeln (Radiant) ueber den kuerzesten Weg.
+     */
+    static float lerpAngleRad(float a, float b, float t)
+    {
+        float d = b - a;
+        while (d > M_PI)
+            d -= 2.0f * M_PI;
+        while (d < -M_PI)
+            d += 2.0f * M_PI;
+        return a + d * t;
     }
 
     /**

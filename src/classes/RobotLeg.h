@@ -117,6 +117,12 @@ public:
 
         // Verschiebung zur Körperhöhe mit offset, falls nicht alle Beine auf der selben Ebene montiert sind.
         coxaBaseY += m_pose.height + HEIGHT_OFFSET;
+
+        // Horizontale Verschiebung des Körperzentrums (z.B. um den Schwerpunkt beim
+        // Laufen über das Stützdreieck der 3 stehenden Beine zu bringen). Reine
+        // Translation der gesamten Hüft-Ebene -> Füße bleiben stehen, Körper wandert.
+        coxaBaseX += m_pose.bodyShiftX;
+        coxaBaseZ += m_pose.bodyShiftZ;
     }
 
     /**

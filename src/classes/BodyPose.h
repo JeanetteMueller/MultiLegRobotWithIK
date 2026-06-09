@@ -20,6 +20,9 @@ struct BodyPose
     float tiltZ;  // Kippen um Z-Achse / Roll (Radiant)
     float rotY;   // Drehung um Y-Achse / Yaw (Radiant)
 
+    float bodyShiftX = 0.0f; // horizontale Verschiebung des Körperzentrums in X (mm)
+    float bodyShiftZ = 0.0f; // horizontale Verschiebung des Körperzentrums in Z (mm)
+
     // Konstruktor mit Standardwerten
     BodyPose() : height(200.0), tiltX(0.0), tiltZ(0.0), rotY(0.0) {}
 

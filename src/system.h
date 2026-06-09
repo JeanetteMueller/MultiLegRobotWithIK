@@ -146,9 +146,7 @@ void loop()
         robot->doSpecialPose(1);
     }
 
-    robot->setWalkDirection(walkX, walkY, rotateBody);
-    robot->setBaseFootExtend(170.0);
-    robot->setPose(height, tiltX, tiltY, rotateTorso);
+    robot->applyControls(walkX, walkY, rotateBody, 170.0, height, tiltX, tiltY, rotateTorso);
 
     robot->mainLoop();
 
