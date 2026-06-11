@@ -12,6 +12,7 @@ The library only **computes joint angles**. Driving servos, reading a remote con
 
 - **Any leg count ≥ 4** and any angular layout — symmetric or asymmetric.
 - **Per‑leg geometry:** body radius, coxa/femur/tibia lengths, mounting angle, height offset and foot extension are set individually for every leg.
+- **Sideways knee‑axis offset** per leg: model femur/tibia joints that are mounted offset along their rotation axis instead of in a flat plane (optional, defaults to 0).
 - **3‑DOF inverse kinematics** per leg (coxa hip‑swing, femur hip‑lift, tibia knee) using the law of cosines, with automatic reachability and joint‑limit checks.
 - **Cyclic gait generator** that adapts to the leg count: one leg lifts at a time for ≤ 4 legs (more stable), half the legs for ≥ 5.
 - **Body pose control:** height, pitch, roll and yaw — feet stay planted while the body moves.
@@ -129,16 +130,36 @@ See **`examples/BasicWalk`** for a complete, runnable version.
 One leg's geometry and per‑leg math. Construct one per leg:
 
 ```cpp
-RobotLeg(float bodyRadius,    // centre of body → this leg's first servo (mm)
-         float coxaLength,    // hip segment length (mm)
-         float thighLength,   // femur length (mm)
-         float shinLength,    // tibia length, incl. foot pad (mm)
-         float heightOffset,  // vertical offset of this leg's hip (mm)
-         float baseFootExtend,// how far the foot rests out from the body (mm)
-         double baseAngleDeg);// where the leg sits around the body (degrees)
+RobotLeg(float bodyRadius,     // centre of body → this leg's first servo (mm)
+         float coxaLength,     // hip segment length (mm)
+         float thighLength,    // femur length (mm)
+         float shinLength,     // tibia length, incl. foot pad (mm)
+         float heightOffset,   // vertical offset of this leg's hip (mm)
+         float baseFootExtend, // how far the foot rests out from the body (mm)
+         double baseAngleDeg,  // where the leg sits around the body (degrees)
+         LegLimits legLimits = LegLimits(),     // optional per-joint angle limits
+         AxisOffset axisOffset = AxisOffset()); // optional sideways knee-axis offset (mm)
 ```
 
 `baseAngleDeg` is the single source of truth for a leg's orientation; the command‑vector rotation per leg is derived from it automatically. `getMaxReach()` / `getMinReach()` return the leg's reach limits.
+
+The last two parameters are optional. `legLimits` constrains each joint's angle (default ±180°). `axisOffset` shifts the knee joints sideways along their rotation axis — see below.
+
+#### Sideways knee-axis offset (`AxisOffset`)
+
+Normally the coxa, femur and tibia servos line up when viewed from above, so each leg is a flat plane. If your mechanics mount the femur and/or tibia joint with a sideways offset along their (horizontal) rotation axis, pass an `AxisOffset` to account for it in the IK:
+
+```cpp
+struct AxisOffset {
+    float femur = 0.0f; // offset of the femur joint (at the coxa end), mm
+    float tibia = 0.0f; // offset of the tibia joint (at the femur end), mm
+};
+
+// e.g. femur joint shifted +12 mm, tibia joint shifted -8 mm:
+RobotLeg(104.175, 54, 120, 222.5, 0, 170, 0, LegLimits(), AxisOffset{12.0f, -8.0f});
+```
+
+Both default to `0` (the classic straight‑leg layout, mathematically unchanged). The offset is tangential to the leg's radial direction; the IK rotates the coxa so the foot still lands on its commanded target, while the femur/tibia 2D solve stays in the (now laterally shifted) leg plane.
 
 ### `RobotWithKinematics`
 
@@ -172,6 +193,7 @@ A small 3D vector helper (`x` right, `y` up, `z` forward/back) used for position
 - **X/Z is the ground plane, Y is up.** Foot targets live on the ground; the body floats `height + heightOffset` above each hip.
 - A leg's `baseAngleDeg` defines where it is mounted around the body — use any angles you like, not just `360° / N`.
 - The IK projects the foot into each leg's radial/tangential frame: the coxa swings only to correct sideways offset, then femur and tibia are solved as a 2D arm (knee bends outward).
+- A leg's `axisOffset` shifts the femur/tibia joints sideways (tangentially) along their rotation axis. Since both axes are parallel, only the sum affects the foot: the coxa angle absorbs the lateral shift, and the 2D femur/tibia solve runs in the shifted plane.
 
 ## Gait
 

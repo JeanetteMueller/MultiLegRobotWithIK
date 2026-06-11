@@ -1,40 +1,40 @@
 /**
  * LegLimits.h
  *
- * C++ Structs für die Gelenk-Limits eines Beins (in Grad).
+ * C++ structs for the joint limits of a leg (in degrees).
  *
- * Früher waren die Limits hart in LegAngles.h hinterlegt und damit nur für
- * Rocky passend. Über diese Structs werden sie pro Roboter in der definitions.h
- * eingepflegt und an jedes RobotLeg übergeben.
+ * Previously the limits were hard-coded in LegAngles.h and therefore only
+ * suited Rocky. Via these structs they are configured per robot in
+ * definitions.h and passed to each RobotLeg.
  *
- * Autor: Claude.ai & Jeanette Müller
- * Datum: 2025
+ * Author: Claude.ai & Jeanette Müller
+ * Date: 2025
  */
 
 #ifndef LegLimits_H
 #define LegLimits_H
 
-// Erlaubter Wertebereich eines einzelnen Gelenks (in Grad).
-// Default ist bewusst weit (±180°), damit ein nicht konfiguriertes Bein nicht
-// versehentlich alle Posen blockiert.
+// Allowed value range of a single joint (in degrees).
+// The default is deliberately wide (±180°) so that an unconfigured leg does not
+// accidentally block all poses.
 struct Limits
 {
     float min = -180.0f;
     float max = 180.0f;
 
-    // true, wenn der Winkel innerhalb (inkl. Grenzen) liegt
+    // true if the angle lies within (inclusive of) the bounds
     bool contains(float value) const
     {
         return value >= min && value <= max;
     }
 };
 
-// Limits für alle 3 Gelenke eines Beins.
+// Limits for all 3 joints of a leg.
 struct LegLimits
 {
-    Limits coxa;  // Schwenk (swing) um die vertikale Achse
-    Limits femur; // Anheben (lift)
-    Limits tibia; // Knie (knee)
+    Limits coxa;  // swing around the vertical axis
+    Limits femur; // lift
+    Limits tibia; // knee
 };
 
 #endif // LegLimits_H

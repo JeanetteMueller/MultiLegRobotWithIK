@@ -3,8 +3,8 @@
  *
  * Helper functions used across the library and convenient for sketches.
  *
- * Autor: Jeanette Müller
- * Datum: 2025
+ * Author: Jeanette Müller
+ * Date: 2025
  */
 
 #ifndef BASIC_FUNCTIONS_H
@@ -31,7 +31,7 @@ inline float degToRad(float deg)
 
 inline void printLegAngles(const LegAngles &angles, int legIndex)
 {
-    Serial.print("  Bein ");
+    Serial.print("  Leg ");
     Serial.print(legIndex);
     Serial.print(": ");
 
@@ -40,17 +40,17 @@ inline void printLegAngles(const LegAngles &angles, int legIndex)
 
         Serial.print("θ0=");
         Serial.print(angles.coxaDeg());
-        Serial.print("° (Schwenk), ");
+        Serial.print("° (coxa), ");
         Serial.print("θ1=");
         Serial.print(angles.femurDeg());
-        Serial.print("° (Heben), ");
+        Serial.print("° (femur), ");
         Serial.print("θ2=");
         Serial.print(angles.tibiaDeg());
-        Serial.print("° (Knie)");
+        Serial.print("° (tibia)");
     }
     else
     {
-        Serial.print("Position nicht erreichbar!");
+        Serial.print("Position not reachable!");
     }
 }
 

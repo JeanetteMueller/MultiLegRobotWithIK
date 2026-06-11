@@ -1,10 +1,10 @@
 /**
  * BodyPose.h
  *
- * C++ Struct um die zielwerte des Roboters zu definieren.
+ * C++ struct to define the target values of the robot.
  *
- * Autor: Jeanette Müller
- * Datum: 2025
+ * Author: Jeanette Müller
+ * Date: 2025
  */
 
 #ifndef BodyPose_H
@@ -12,21 +12,21 @@
 
 #include "BodyPose.h"
 
-// Struktur für Körper-Parameter
+// Struct for body parameters
 struct BodyPose
 {
-    float height; // Höhe des Körpers über dem Boden (mm)
-    float tiltX;  // Kippen um X-Achse / Pitch (Radiant)
-    float tiltZ;  // Kippen um Z-Achse / Roll (Radiant)
-    float rotY;   // Drehung um Y-Achse / Yaw (Radiant)
+    float height; // height of the body above the ground (mm)
+    float tiltX;  // tilt around the X axis / pitch (radians)
+    float tiltZ;  // tilt around the Z axis / roll (radians)
+    float rotY;   // rotation around the Y axis / yaw (radians)
 
-    float bodyShiftX = 0.0f; // horizontale Verschiebung des Körperzentrums in X (mm)
-    float bodyShiftZ = 0.0f; // horizontale Verschiebung des Körperzentrums in Z (mm)
+    float bodyShiftX = 0.0f; // horizontal shift of the body center in X (mm)
+    float bodyShiftZ = 0.0f; // horizontal shift of the body center in Z (mm)
 
-    // Konstruktor mit Standardwerten
+    // Constructor with default values
     BodyPose() : height(200.0), tiltX(0.0), tiltZ(0.0), rotY(0.0) {}
 
-    // Konstruktor mit Winkeln in Grad
+    // Constructor with angles in degrees
     static BodyPose fromDegrees(float height,
                                 float tiltXDeg, float tiltZDeg, float rotYDeg)
     {

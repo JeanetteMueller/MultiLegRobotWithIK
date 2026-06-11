@@ -1,16 +1,16 @@
 /**
  * RobotWithKinematics.h
  *
- * C++ Klasse zur Berechnung der inversen Kinematik für einen 4-8 beinigen Roboter
- * mit zylindrischem Körper und 3-DOF Beinen.
+ * C++ class for computing the inverse kinematics of a 4-8 legged robot
+ * with a cylindrical body and 3-DOF legs.
  *
- * Jedes Bein hat 3 Gelenke:
- *   - θ0 (Hüft-Schwenk): Rotation um Achse senkrecht zum Oberschenkel
- *   - θ1 (Hüft-Heben): Hebt/senkt den Oberschenkel
- *   - θ2 (Knie): Beugt/streckt das Knie
+ * Each leg has 3 joints:
+ *   - θ0 (hip swing): rotation around an axis perpendicular to the femur
+ *   - θ1 (hip lift): raises/lowers the femur
+ *   - θ2 (knee): bends/extends the knee
  *
- * Autor: Claude.ai & Jeanette Müller
- * Datum: 2025
+ * Author: Claude.ai & Jeanette Müller
+ * Date: 2025
  */
 
 static_assert(NUMBER_OF_LEGS >= 4, "MultiLegRobotWithIK requires at least 4 legs");
@@ -31,48 +31,48 @@ static_assert(NUMBER_OF_LEGS >= 4, "MultiLegRobotWithIK requires at least 4 legs
 class RobotWithKinematics
 {
 public:
-    const uint8_t NUM_LEGS = 0; // Anzahl der Beine
-    uint8_t NUM_OF_MOVABLE_LEGS = 0; // Anzahl der Beine die maximal gleichzeitig vom Boden gehoben werden dürfen
+    const uint8_t NUM_LEGS = 0; // number of legs
+    uint8_t NUM_OF_MOVABLE_LEGS = 0; // max number of legs that may be lifted off the ground at the same time
 private:
-    const uint16_t WALKING_STEP_COUNT; // Anzahl der interpolierten Schritte für Bewegungsabläufe
-    const uint16_t MAIN_LOOP_DELAY;    // Millis zwischen denen der MainLoop ausgeführt wird.
+    const uint16_t WALKING_STEP_COUNT; // number of interpolated steps per movement
+    const uint16_t MAIN_LOOP_DELAY;    // millis between mainLoop executions.
 
     RobotLeg *legs = nullptr;
 
-    uint8_t *currentMovingLegs = nullptr; // Indizes der Beine, die aktuell in der Luft sind
-    uint16_t walkingStep = 0; // Zwischenschritt Nummer des aktuellen Bewegungsablauf
+    uint8_t *currentMovingLegs = nullptr; // indices of the legs that are currently in the air
+    uint16_t walkingStep = 0; // sub-step number of the current movement
 
     enum WalkState : uint8_t
     {
-        Walk_Idle = 0, // steht still, Laufzyklus eingefroren bei step=0, phase=0
-        Walk_Active,   // Laufzyklus läuft
-        Walk_Stopping  // Input losgelassen, Zyklus noch sauber zu Ende fahren
+        Walk_Idle = 0, // standing still, walk cycle frozen at step=0, phase=0
+        Walk_Active,   // walk cycle running
+        Walk_Stopping  // input released, finish the cycle cleanly
     };
     WalkState walkState = Walk_Idle;
 
     // ---- Special Pose State Machine ----
     enum SpecialPoseState : uint8_t
     {
-        SP_Idle = 0,   // keine Sonderpose aktiv
-        SP_MovingInA,  // Bein A fährt in die Sonderposition
-        SP_MovingInB,  // Bein B fährt in die Sonderposition
-        SP_Holding,    // Sonderpose wird gehalten
-        SP_MovingOutA, // Bein A fährt zurück in die Ausgangsposition
-        SP_MovingOutB  // Bein B fährt zurück in die Ausgangsposition
+        SP_Idle = 0,   // no special pose active
+        SP_MovingInA,  // leg A moves into the special position
+        SP_MovingInB,  // leg B moves into the special position
+        SP_Holding,    // special pose is being held
+        SP_MovingOutA, // leg A moves back to the home position
+        SP_MovingOutB  // leg B moves back to the home position
     };
 
     SpecialPoseState specialPoseState = SP_Idle;
-    uint8_t activeSpecialPose = 0;     // welche Sonderpose (0..3)
-    uint8_t specialPoseLegA = 2;       // welches Bein zuerst
-    uint8_t specialPoseLegB = 3;       // welches Bein als zweites
-    bool specialPoseRequested = false; // wird jeden Loop von doSpecialPose() gesetzt
-    int8_t specialPoseStep = 0;        // Interpolationsschritt 0..WALKING_STEP_COUNT-1
+    uint8_t activeSpecialPose = 0;     // which special pose (0..3)
+    uint8_t specialPoseLegA = 2;       // which leg first
+    uint8_t specialPoseLegB = 3;       // which leg second
+    bool specialPoseRequested = false; // set every loop by doSpecialPose()
+    int8_t specialPoseStep = 0;        // interpolation step 0..WALKING_STEP_COUNT-1
     uint32_t previousSpecialStepMillis = 0;
 
-    // Start-/Zielposition für die aktuelle Teilbewegung (Vector3, in Welt-Koordinaten)
+    // Start/target position for the current sub-movement (Vector3, in world coordinates)
     Vector3 specialMoveStart;
     Vector3 specialMoveTarget;
-    uint8_t specialMovingLeg = 0; // das Bein, das sich gerade bewegt
+    uint8_t specialMovingLeg = 0; // the leg that is currently moving
 
     uint32_t previousStepMillis = 0;
 
@@ -85,13 +85,13 @@ private:
 
     BodyPose m_pose;
 
-    // Quotient, wie weit das Koerperzentrum beim Laufen zum gegenueberliegenden
-    // Bein verschoben wird (Anteil von BODY_RADIUS). 0 = aus. Wirkt nur bei 4 Beinen.
+    // Factor for how far the body center is shifted toward the opposite leg
+    // while walking (fraction of BODY_RADIUS). 0 = off. Only effective with 4 legs.
     float bodyShiftFactor = 0.0f;
 
 public:
     /**
-     * Konstruktor
+     * Constructor
      */
     RobotWithKinematics(
         uint8_t numberOfLegs,
@@ -104,8 +104,8 @@ public:
                           legs(legs),
                           maxStepWidth(maxStepWidth)
     {
-        // Bei weniger als 5 Beinen ist nur ein Bein gleichzeitig in der Luft sinnvoll
-        // (sonst kippt der Roboter). Ab 5 Beinen kann die Hälfte gleichzeitig laufen.
+        // With fewer than 5 legs only one leg in the air at a time makes sense
+        // (otherwise the robot tips). From 5 legs on, half of them can move at once.
         NUM_OF_MOVABLE_LEGS = (numberOfLegs < 5) ? 1 : numberOfLegs / 2;
 
         currentMovingLegs = new uint8_t[NUM_OF_MOVABLE_LEGS];
@@ -131,7 +131,7 @@ public:
     }
 
     /**
-     * true wenn das angegebene Bein aktuell zum Satz der bewegten Beine gehört.
+     * true if the given leg currently belongs to the set of moving legs.
      */
     bool isLegCurrentlyMoving(uint8_t legIndex) const
     {
@@ -146,23 +146,23 @@ public:
     }
 
     /**
-     * Bereitet Bewegungsabläufe vor
+     * Prepares the movement sequences
      */
     void mainLoop()
     {
-        // Zustandsübergänge: auf Input-Änderung reagieren
+        // State transitions: react to input changes
         switch (walkState)
         {
         case Walk_Idle:
-            // Im Idle steht der Zyklus bei step=0, phase=0. Losfahren wenn Input kommt.
+            // While idle the cycle rests at step=0, phase=0. Start when input arrives.
             if (hasWalkInput())
             {
                 walkState = Walk_Active;
-                previousStepMillis = millis(); // sauber starten
+                previousStepMillis = millis(); // clean start
             }
             else
             {
-                // nichts tun, Uhr ruht
+                // do nothing, clock rests
                 return;
             }
             break;
@@ -175,7 +175,7 @@ public:
             break;
 
         case Walk_Stopping:
-            // Input kommt wieder rein bevor Zyklus fertig ist -> zurück in Active
+            // Input comes back before the cycle finishes -> back to Active
             if (hasWalkInput())
             {
                 walkState = Walk_Active;
@@ -183,7 +183,7 @@ public:
             break;
         }
 
-        // Zeit-Takt
+        // Time tick
         if (millis() - previousStepMillis < MAIN_LOOP_DELAY)
         {
             return;
@@ -207,9 +207,9 @@ public:
                 currentPhase = 0;
             }
 
-            // Alle aktuell bewegten Beine um eins weiterrotieren (modulo NUM_LEGS).
-            // Da alle Einträge synchron rotieren, bleibt der ursprünglich gewählte
-            // Abstand zwischen den bewegten Beinen erhalten.
+            // Rotate all currently moving legs by one (modulo NUM_LEGS).
+            // Since all entries rotate in sync, the originally chosen spacing
+            // between the moving legs is preserved.
             for (uint8_t i = 0; i < NUM_OF_MOVABLE_LEGS; i++)
             {
                 currentMovingLegs[i] += 1;
@@ -219,8 +219,8 @@ public:
                 }
             }
 
-            // Zyklus ist an einem sauberen Nullpunkt.
-            // Wenn wir gerade am Stoppen sind -> jetzt in Idle wechseln.
+            // The cycle is at a clean zero point.
+            // If we are currently stopping -> switch to Idle now.
             if (walkState == Walk_Stopping && currentPhase == 0)
             {
                 walkState = Walk_Idle;
@@ -229,19 +229,19 @@ public:
     }
 
     /**
-     * Zielkoordinaten vorbereiten bevor der Lauf-Loop starten kann
+     * Prepare the target coordinates before the walk loop can start
      */
     void prepareTargetPositions()
     {
         bool walking = hasWalkInput();
 
-        // Koerperzentrum zum Gegenbein verschieben (nur 4-Bein-Roboter).
+        // Shift the body center toward the opposite leg (4-leg robots only).
         updateBodyShift();
 
         for (uint8_t legIndex = 0; legIndex < NUM_LEGS; legIndex++)
         {
-            // Beine, die an der Sonderpose beteiligt sind, NICHT überschreiben.
-            // specialPoseLoop() schreibt für diese Beine die Zielposition.
+            // Do NOT overwrite legs that are part of the special pose.
+            // specialPoseLoop() writes the target position for those legs.
             if (legIsInSpecialPose(legIndex))
             {
                 continue;
@@ -258,21 +258,21 @@ public:
     }
 
     /**
-     * Setzt den Basis-Abstand zwischen dem Zentrum des Robots und den Füßen
+     * Sets the base distance between the robot's center and the feet
      */
     void setBaseFootExtend(float newValue)
     {
         for (uint8_t i = 0; i < NUM_LEGS; i++)
         {
-            float footRadius = legs[i].BODY_RADIUS + newValue; // Abstand vom Basis Servo
-            // Home-Position am ECHTEN Montagewinkel des Beins (nicht gleichmaessig
-            // i*360/N), sonst stimmen Fuss- und Hueft-Winkel bei ungleichmaessig
-            // verteilten Beinen nicht ueberein und die Coxa schwenkt zur Seite.
+            float footRadius = legs[i].BODY_RADIUS + newValue; // distance from the base servo
+            // Home position at the REAL mounting angle of the leg (not evenly
+            // i*360/N), otherwise the foot and hip angles do not match for
+            // unevenly distributed legs and the coxa swings sideways.
             float angle = legs[i].baseAngle;
 
             legs[i].baseFootPosition = Vector3(
                 cosf(angle) * footRadius,
-                0.0, // Boden
+                0.0, // ground
                 sinf(angle) * footRadius);
 
             legs[i].baseFootExtend = newValue;
@@ -280,7 +280,7 @@ public:
     }
 
     /**
-     * Setzt die Körper-Pose mit einzelnen Parametern (Winkel in Grad)
+     * Sets the body pose with individual parameters (angles in degrees)
      */
     void setPose(float height,
                  float tiltXDeg, float tiltZDeg, float rotYDeg)
@@ -289,7 +289,7 @@ public:
     }
 
     /**
-     * Setzt die Koordinaten abweichung fest, in die der Roboter sich bewegen soll
+     * Sets the coordinate offset the robot should move toward
      */
     void setWalkDirection(float x, float y, float r)
     {
@@ -302,10 +302,10 @@ public:
     }
 
     /**
-     * Setzt Laufrichtung, Fuss-Abstand und Koerper-Pose in einem Aufruf.
-     * Die Parameter werden nur an einem sauberen Zyklus-Nullpunkt
-     * (currentPhase == 0 && walkingStep == 0) uebernommen, damit sich
-     * Ziele nicht mitten im Schritt aendern.
+     * Sets walk direction, foot extension and body pose in a single call.
+     * The parameters are only latched at a clean cycle zero point
+     * (currentPhase == 0 && walkingStep == 0) so that targets do not
+     * change mid-step.
      */
     void applyControls(float walkX, float walkY, float rotateBody,
                        float footExtend,
@@ -320,8 +320,8 @@ public:
     }
 
     /**
-     * Setzt den Quotienten fuer die Koerper-Schwerpunktverschiebung beim Laufen.
-     * Anteil von BODY_RADIUS (z.B. 0.3). 0 = aus. Wirkt nur bei 4-beinigen Robotern.
+     * Sets the factor for the body center-of-mass shift while walking.
+     * Fraction of BODY_RADIUS (e.g. 0.3). 0 = off. Only effective on 4-legged robots.
      */
     void setBodyShiftFactor(float factor)
     {
@@ -329,12 +329,12 @@ public:
     }
 
     /**
-     * Verschiebt das Koerperzentrum beim Laufen kreisfoermig zum jeweils
-     * gegenueberliegenden Bein des aktuell angehobenen Beins. Damit wandert der
-     * Schwerpunkt (Akku in der Mitte) in das Stuetzdreieck der 3 stehenden Beine,
-     * sodass der Roboter beim Anheben eines Beins nicht in dessen Richtung kippt.
+     * While walking, shifts the body center in a circular motion toward the leg
+     * opposite the currently lifted leg. This moves the center of mass (battery
+     * in the middle) into the support triangle of the 3 standing legs, so that
+     * the robot does not tip toward a leg while lifting it.
      *
-     * Nur fuer 4-beinige Roboter (Single-Leg-Gangart). Bei mehr Beinen passiert nichts.
+     * Only for 4-legged robots (single-leg gait). With more legs nothing happens.
      */
     void updateBodyShift()
     {
@@ -345,18 +345,18 @@ public:
             return;
         }
 
-        const uint8_t m = currentMovingLegs[0]; // aktuell angehobenes Bein
+        const uint8_t m = currentMovingLegs[0]; // currently lifted leg
         const uint8_t prevLeg = (m + NUM_LEGS - 1) % NUM_LEGS;
         const uint8_t nextLeg = (m + 1) % NUM_LEGS;
 
-        // Richtung jeweils zum gegenueberliegenden Bein (echter baseAngle, da die
-        // Beine ungleichmaessig verteilt sein koennen).
+        // Direction toward the opposite leg in each case (real baseAngle, since the
+        // legs may be unevenly distributed).
         const float oppPrev = legs[(prevLeg + 2) % NUM_LEGS].baseAngle;
         const float oppCurr = legs[(m + 2) % NUM_LEGS].baseAngle;
         const float oppNext = legs[(nextLeg + 2) % NUM_LEGS].baseAngle;
 
-        // Fortschritt im aktuellen Zyklus (0..1). In der Mitte (t=0.5) ist das Bein
-        // maximal angehoben -> dort soll der Koerper genau zum Gegenbein zeigen.
+        // Progress within the current cycle (0..1). In the middle (t=0.5) the leg
+        // is lifted the most -> there the body should point exactly at the opposite leg.
         const float t = static_cast<float>(walkingStep) / static_cast<float>(WALKING_STEP_COUNT);
 
         float angle;
@@ -375,7 +375,7 @@ public:
     }
 
     /**
-     * Interpoliert zwischen zwei Winkeln (Radiant) ueber den kuerzesten Weg.
+     * Interpolates between two angles (radians) along the shortest path.
      */
     static float lerpAngleRad(float a, float b, float t)
     {
@@ -388,9 +388,9 @@ public:
     }
 
     /**
-     * Berechnet die Gelenkwinkel für alle 5 Beine
+     * Computes the joint angles for all 5 legs
      *
-     * @return Array mit 5 LegAngles Strukturen
+     * @return array with 5 LegAngles structs
      */
     std::array<LegAngles, NUMBER_OF_LEGS> calculateAllLegAngles() const
     {
@@ -405,7 +405,7 @@ public:
     }
 
     /**
-     * Prüft ob alle Beine ihre Zielposition erreichen können
+     * Checks whether all legs can reach their target position
      */
     bool isValidPose() const
     {
@@ -420,15 +420,15 @@ public:
     }
 
     /**
-     * Aktiviert eine bestimmte Sonderpose. Muss jeden Loop aufgerufen werden,
-     * solange die Pose aktiv sein soll. Wird sie nicht mehr aufgerufen,
-     * fahren die Beine nacheinander wieder in ihre Ausgangsposition zurück.
+     * Activates a specific special pose. Must be called every loop as long as
+     * the pose should stay active. Once it is no longer called, the legs move
+     * back to their home position one after another.
      */
     void doSpecialPose(uint8_t pose)
     {
         specialPoseRequested = true;
 
-        // Neue Pose gewünscht, während Idle -> Sequenz starten
+        // New pose requested while idle -> start the sequence
         if (specialPoseState == SP_Idle)
         {
             activeSpecialPose = pose;
@@ -439,10 +439,10 @@ public:
     }
 
     /**
-     * Tick für die Sonderpose-State-Machine. Muss einmal pro Loop aufgerufen
-     * werden, nach mainLoop() und bevor calculateAllLegAngles() die Winkel rechnet.
-     * Schreibt die interpolierten Zielpositionen in targetPosition[] für die
-     * beteiligten Beine.
+     * Tick for the special-pose state machine. Must be called once per loop,
+     * after mainLoop() and before calculateAllLegAngles() computes the angles.
+     * Writes the interpolated target positions into targetPosition[] for the
+     * legs involved.
      */
     void specialPoseLoop()
     {
@@ -452,45 +452,45 @@ public:
             return;
         }
 
-        // Zeitbasierte Interpolation, gleiche Kadenz wie mainLoop (4ms/Step)
+        // Time-based interpolation, same cadence as mainLoop (4ms/step)
         if (millis() - previousSpecialStepMillis >= 4)
         {
             previousSpecialStepMillis = millis();
 
-            // In Haltephase nicht weiterinterpolieren, nur auf Loslassen warten
+            // During the hold phase do not interpolate further, just wait for release
             if (specialPoseState == SP_Holding)
             {
                 if (!specialPoseRequested)
                 {
-                    // Loslassen -> Rückweg starten mit Bein A
+                    // Released -> start the return path with leg A
                     startSpecialMove(specialPoseLegA, legs[specialPoseLegA].baseFootPosition);
                     specialPoseState = SP_MovingOutA;
                 }
             }
             else
             {
-                // Bewegungs-Phasen: Schritt hochzählen
+                // Movement phases: increment the step
                 specialPoseStep++;
 
                 if (specialPoseStep >= WALKING_STEP_COUNT)
                 {
-                    // Teilbewegung abgeschlossen -> nächste Phase
+                    // Sub-movement finished -> next phase
                     specialPoseStep = 0;
                     advanceSpecialPoseState();
                 }
             }
         }
 
-        // Zielposition(en) für die beteiligten Beine in targetPosition schreiben
+        // Write the target position(s) for the involved legs into targetPosition
         applySpecialPoseTargets();
 
-        // Flag für nächsten Loop zurücksetzen; doSpecialPose() muss es wieder setzen
+        // Reset the flag for the next loop; doSpecialPose() must set it again
         specialPoseRequested = false;
     }
 
 private:
     /**
-     * true wenn aktuell Input vorliegt, der tatsächlich Bewegung auslösen soll.
+     * true if there is currently input that should actually trigger movement.
      */
     bool hasWalkInput() const
     {
@@ -505,7 +505,7 @@ private:
     }
 
     /**
-     * true wenn das angegebene Bein gerade Teil einer Sonderpose ist.
+     * true if the given leg is currently part of a special pose.
      */
     bool legIsInSpecialPose(uint8_t legIndex) const
     {
@@ -516,7 +516,7 @@ private:
 
     void configureSpecialPoseLegs(uint8_t pose)
     {
-        // Welches Bein-Paar für welche Pose. Bei 5 Beinen gegenüberliegend = +2 oder +3.
+        // Which leg pair for which pose. With 5 legs, opposite = +2 or +3.
         switch (pose)
         {
         case 0:
@@ -535,8 +535,8 @@ private:
     }
 
     /**
-     * Startet eine Teil-Bewegung eines Beins: merkt sich Start (aktuelle Zielposition),
-     * merkt sich Ziel und setzt den Interpolations-Schrittzähler zurück.
+     * Starts a sub-movement of a leg: remembers the start (current target position),
+     * remembers the target and resets the interpolation step counter.
      */
     void startSpecialMove(uint8_t legIndex, Vector3 target)
     {
@@ -548,22 +548,22 @@ private:
     }
 
     /**
-     * Liefert die Ziel-Koordinate (Weltkoordinaten) für ein Bein in einer Sonderpose.
+     * Returns the target coordinate (world coordinates) for a leg in a special pose.
      *
-     * Die Koordinaten werden relativ zur baseFootPosition des jeweiligen Beins
-     * definiert, damit die Pose automatisch mit der 72°-Verteilung der Beine
-     * mitdreht. So musst du die Pose nur einmal "vom ersten Bein aus gedacht"
-     * hinschreiben und sie passt für jedes andere Bein auch.
+     * The coordinates are defined relative to the baseFootPosition of the
+     * respective leg, so the pose automatically rotates along with the 72°
+     * distribution of the legs. That way you only need to write the pose once
+     * "thinking from the first leg" and it fits every other leg too.
      *
-     * offset.x = radial nach außen (+) / zum Körper hin (-)  [aus Sicht des Beins]
-     * offset.y = nach oben (+) / nach unten (-)
-     * offset.z = tangential im Uhrzeigersinn (+) / gegen den Uhrzeigersinn (-)
+     * offset.x = radially outward (+) / toward the body (-)  [from the leg's view]
+     * offset.y = upward (+) / downward (-)
+     * offset.z = tangential clockwise (+) / counter-clockwise (-)
      */
     Vector3 targetForSpecialPose(uint8_t legIndex, uint8_t pose) const
     {
         Vector3 offset = offsetForSpecialPose(legIndex, pose);
 
-        // Offset in das radial/tangential-Koordinatensystem des Beins drehen
+        // Rotate the offset into the radial/tangential coordinate system of the leg
         const float angle = legs[legIndex].baseAngle;
         const float radialX = cosf(angle);
         const float radialZ = sinf(angle);
@@ -578,10 +578,10 @@ private:
     }
 
     /**
-     * Hier werden die Koordinaten-Offsets der Sonderpose definiert,
-     * gemessen relativ zur baseFootPosition eines Beins.
+     * Here the coordinate offsets of the special pose are defined,
+     * measured relative to a leg's baseFootPosition.
      *
-     * x = radial (+ = nach außen, - = zum Körper), y = hoch/runter, z = seitlich
+     * x = radial (+ = outward, - = toward body), y = up/down, z = sideways
      */
     Vector3 offsetForSpecialPose(uint8_t legIndex, uint8_t pose) const
     {
@@ -604,8 +604,8 @@ private:
     }
 
     /**
-     * Schreibt die interpolierte Position der Sonderpose in targetPosition[]
-     * für das gerade bewegte Bein und hält bereits bewegte Beine auf ihrer Endposition.
+     * Writes the interpolated special-pose position into targetPosition[]
+     * for the currently moving leg and holds already moved legs at their end position.
      */
     void applySpecialPoseTargets()
     {
@@ -613,7 +613,7 @@ private:
         {
         case SP_MovingInA:
         {
-            // Bein A bewegt sich zum Sonderpose-Ziel
+            // Leg A moves toward the special-pose target
             legs[specialMovingLeg].targetPosition = legs[specialMovingLeg].interpolateSin(WALKING_STEP_COUNT,
                                                                                           specialMoveStart,
                                                                                           specialMoveTarget,
@@ -623,7 +623,7 @@ private:
         }
         case SP_MovingInB:
         {
-            // Bein A bleibt auf seinem Ziel, Bein B fährt
+            // Leg A stays on its target, leg B moves
             legs[specialPoseLegA].targetPosition = targetForSpecialPose(specialPoseLegA, activeSpecialPose);
             legs[specialMovingLeg].targetPosition = legs[specialMovingLeg].interpolateSin(WALKING_STEP_COUNT,
                                                                                           specialMoveStart,
@@ -634,14 +634,14 @@ private:
         }
         case SP_Holding:
         {
-            // Beide Beine halten ihre Sonderposition
+            // Both legs hold their special position
             legs[specialPoseLegA].targetPosition = targetForSpecialPose(specialPoseLegA, activeSpecialPose);
             legs[specialPoseLegB].targetPosition = targetForSpecialPose(specialPoseLegB, activeSpecialPose);
             break;
         }
         case SP_MovingOutA:
         {
-            // Bein B bleibt noch oben, Bein A geht zurück
+            // Leg B stays up, leg A goes back
             legs[specialPoseLegB].targetPosition = targetForSpecialPose(specialPoseLegB, activeSpecialPose);
             legs[specialMovingLeg].targetPosition = legs[specialMovingLeg].interpolateSin(WALKING_STEP_COUNT,
                                                                                           specialMoveStart,
@@ -652,7 +652,7 @@ private:
         }
         case SP_MovingOutB:
         {
-            // Bein A ist schon unten, Bein B geht jetzt zurück
+            // Leg A is already down, leg B now goes back
             legs[specialPoseLegA].targetPosition = legs[specialPoseLegA].baseFootPosition;
             legs[specialMovingLeg].targetPosition = legs[specialMovingLeg].interpolateSin(WALKING_STEP_COUNT,
                                                                                           specialMoveStart,
@@ -667,34 +667,34 @@ private:
     }
 
     /**
-     * Wird aufgerufen wenn eine Teil-Bewegung ihre WALKING_STEP_COUNT Schritte
-     * abgeschlossen hat -> Übergang in die nächste Phase.
+     * Called when a sub-movement has completed its WALKING_STEP_COUNT steps
+     * -> transition to the next phase.
      */
     void advanceSpecialPoseState()
     {
         switch (specialPoseState)
         {
         case SP_MovingInA:
-            // Bein A ist angekommen -> Bein B starten
+            // Leg A has arrived -> start leg B
             startSpecialMove(specialPoseLegB, targetForSpecialPose(specialPoseLegB, activeSpecialPose));
             specialPoseState = SP_MovingInB;
             break;
 
         case SP_MovingInB:
-            // Beide Beine in Position -> halten
+            // Both legs in position -> hold
             specialPoseState = SP_Holding;
             break;
 
         case SP_MovingOutA:
-            // Bein A ist zurück -> Bein B zurückbewegen
+            // Leg A is back -> move leg B back
             startSpecialMove(specialPoseLegB, legs[specialPoseLegB].baseFootPosition);
             specialPoseState = SP_MovingOutB;
             break;
 
         case SP_MovingOutB:
-            // Alles zurück -> Idle
+            // Everything back -> Idle
             specialPoseState = SP_Idle;
-            // lastTargetPosition synchronisieren, damit die Laufmechanik sauber weiterläuft
+            // Synchronize lastTargetPosition so the walk mechanics continue cleanly
             legs[specialPoseLegA].lastTargetPosition = legs[specialPoseLegA].baseFootPosition;
             legs[specialPoseLegB].lastTargetPosition = legs[specialPoseLegB].baseFootPosition;
             break;

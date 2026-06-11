@@ -1,16 +1,16 @@
 /**
  * Vector3.h
  *
- * C++ Struct Als Helfer-Objekt um mit Koordinaten zu rechnen.
+ * C++ struct used as a helper object for working with coordinates.
  *
- * Autor: Jeanette Müller
- * Datum: 2025
+ * Author: Jeanette Müller
+ * Date: 2025
  */
 
 #ifndef Vector3_h
 #define Vector3_h
 
-// 3D Vektor Struktur für Position und Richtung
+// 3D vector struct for position and direction
 struct Vector3
 {
     float x, y, z;
@@ -43,7 +43,7 @@ struct Vector3
             x * s + z * c);
     }
 
-    // Rotation um X-Achse
+    // Rotation around the X axis
     Vector3 rotateX(const Vector3 &v, float angle)
     {
         float c = cosf(angle);
@@ -54,7 +54,7 @@ struct Vector3
             v.y * s + v.z * c);
     }
 
-    // Rotation um Y-Achse
+    // Rotation around the Y axis
     Vector3 rotateY(const Vector3 &v, float angle)
     {
         float c = cosf(angle);
@@ -65,7 +65,7 @@ struct Vector3
             -v.x * s + v.z * c);
     }
 
-    // Rotation um Z-Achse
+    // Rotation around the Z axis
     Vector3 rotateZ(const Vector3 &v, float angle)
     {
         float c = cosf(angle);

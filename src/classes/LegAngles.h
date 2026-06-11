@@ -1,10 +1,10 @@
 /**
  * LegAngles.h
  *
- * C++ Struct zur Rückgabe der errechneten Winkel je Bein.
+ * C++ struct to return the computed angles for each leg.
  *
- * Autor: Claude.ai & Jeanette Müller
- * Datum: 2025
+ * Author: Claude.ai & Jeanette Müller
+ * Date: 2025
  */
 
 #ifndef LegAngles_H
@@ -12,23 +12,23 @@
 
 #include "LegLimits.h"
 
-// Struktur für die 3 Gelenkwinkel eines Beins (in Radiant)
+// Struct for the 3 joint angles of a leg (in radians)
 struct LegAngles
 {
-    float coxa;  // θ0: Coxa-Winkel (um vertikale Y-Achse)
-    float femur; // θ1: Femur-Winkel (um horizontale Achse)
-    float tibia; // θ2: Tibia/Knie-Winkel (um horizontale Achse)
-    bool valid;  // true wenn Position erreichbar
+    float coxa;  // θ0: coxa angle (around the vertical Y axis)
+    float femur; // θ1: femur angle (around the horizontal axis)
+    float tibia; // θ2: tibia/knee angle (around the horizontal axis)
+    bool valid;  // true if the position is reachable
 
     bool debug = false;
 
-    // Winkel in Grad zurückgeben
+    // return angles in degrees
     double coxaDeg() const { return coxa * 180.0 / M_PI; }
     double femurDeg() const { return femur * 180.0 / M_PI; }
     double tibiaDeg() const { return tibia * 180.0 / M_PI; }
 
-    // Prüft, ob alle 3 Gelenkwinkel innerhalb der übergebenen Limits liegen.
-    // Die Limits werden pro Bein in der definitions.h gesetzt (siehe LegLimits).
+    // Checks whether all 3 joint angles lie within the given limits.
+    // The limits are set per leg in definitions.h (see LegLimits).
     bool allAnglesInLimit(const LegLimits &limits) const
     {
         bool ok = true;
