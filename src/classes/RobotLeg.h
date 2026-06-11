@@ -4,6 +4,7 @@
 
 #include "Vector3.h"
 #include "LegLimits.h"
+#include "AxisOffset.h"
 
 class RobotLeg
 {
@@ -12,6 +13,10 @@ public:
     // Erlaubte Gelenk-Limits dieses Beins (in Grad). Werden in der definitions.h
     // gesetzt; Default ist weit (±180°), damit nichts ungewollt blockiert.
     LegLimits legLimits;
+
+    // Seitlicher Versatz der Knie-Gelenke entlang ihrer Drehachse (in mm).
+    // Default 0 -> Coxa/Femur/Tibia bilden von oben eine gerade Linie.
+    AxisOffset axisOffset;
 
     // Roboter-Geometrie (in mm)
     const float BODY_RADIUS; // Radius des zylindrischen Körpers
@@ -42,7 +47,9 @@ public:
              float heightOffset,
              float baseFootExtend,
              double baseAngleDeg,
-             LegLimits legLimits = LegLimits()) : legLimits(legLimits),
+             LegLimits legLimits = LegLimits(),
+             AxisOffset axisOffset = AxisOffset()) : legLimits(legLimits),
+                                    axisOffset(axisOffset),
                                     BODY_RADIUS(bodyRadius),
                                     COXA_LENGTH(coxaLength),
                                     FEMUR_LENGTH(thighLength),
@@ -165,9 +172,25 @@ public:
         const float footRadial = deltaX * baseRadialX + deltaZ * baseRadialZ;
         const float footTangent = deltaX * tangentX + deltaZ * tangentZ;
 
-        // Coxa-Winkel: nur für seitliche Abweichung (tangential)
-        // Die Coxa zeigt primär nach außen, dreht sich aber für seitliche Korrektur
-        float coxaAngle = atan2f(footTangent, fmaxf(footRadial, 0.001));
+        // Gesamter seitlicher Versatz der beiden Knie-Gelenke entlang ihrer
+        // Drehachse. Femur- und Tibia-Achse liegen parallel (beide tangential),
+        // daher zählt für die Fußposition nur ihre Summe.
+        const float axisOffsetTotal = axisOffset.femur + axisOffset.tibia;
+
+        // Coxa-Winkel: zeigt primär nach außen, dreht sich aber für seitliche
+        // Korrektur. Ohne Versatz zeigt die Coxa direkt auf den Fuß (atan2).
+        // Mit Versatz muss der Fuß einen tangentialen Abstand axisOffsetTotal zur
+        // Coxa-Linie haben -> die Coxa zusätzlich um asin(offset / Abstand) drehen.
+        const float footHorizDist = sqrtf(footRadial * footRadial + footTangent * footTangent);
+        const float footBearing = atan2f(footTangent, fmaxf(footRadial, 0.001));
+        float offsetCorrection = 0.0f;
+        if (footHorizDist > 0.001f)
+        {
+            // clampen, falls der Versatz größer als der horizontale Abstand ist
+            const float ratio = fmaxf(-1.0f, fminf(1.0f, axisOffsetTotal / footHorizDist));
+            offsetCorrection = asinf(ratio);
+        }
+        float coxaAngle = footBearing - offsetCorrection;
 
         // Normalisiere auf -π bis +π
         while (coxaAngle > M_PI)
@@ -196,9 +219,13 @@ public:
         // Positiv = nach außen, Negativ = zurück zum Körper
         const float footRadialFromCoxa = dx * coxaDirX + dz * coxaDirZ;
 
-        // Gesamte horizontale Distanz
-        const float legPlaneHoriz = sqrtf(dx * dx + dz * dz);
-        const float legPlaneDist = sqrtf(legPlaneHoriz * legPlaneHoriz + dy * dy);
+        // Horizontale Distanz IN der Femur-Tibia-Ebene: hier zählt nur die radiale
+        // Komponente. Der tangentiale Anteil (= seitlicher Achsversatz der Knie)
+        // liegt entlang der Knie-Drehachsen und wird vom 2D-IK nicht überbrückt.
+        // Ohne Versatz ist footRadialFromCoxa identisch zur gesamten horizontalen
+        // Distanz, das Verhalten bleibt also unverändert.
+        const float legPlaneHoriz = fabsf(footRadialFromCoxa);
+        const float legPlaneDist = sqrtf(footRadialFromCoxa * footRadialFromCoxa + dy * dy);
 
         // Prüfe Erreichbarkeit
         if (legPlaneDist > FEMUR_LENGTH + TIBIA_LENGTH ||
